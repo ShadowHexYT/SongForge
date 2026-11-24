@@ -1,0 +1,71 @@
+{
+  "name": "songforge",
+  "productName": "SongForge",
+  "version": "1.0.0",
+  "description": "Clip songs from YouTube, tag them, and listen in SongForge or Spotify Local Files.",
+  "main": "./out/main/index.js",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "start": "electron-vite preview",
+    "dist": "electron-vite build && electron-builder --win --publish never"
+  },
+  "build": {
+    "appId": "app.songforge.desktop",
+    "productName": "SongForge",
+    "files": [
+      "out/**",
+      "build/icon.png",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/ffmpeg-static/**"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "SongForge"
+    },
+    "artifactName": "SongForge-Setup-${version}.${ext}"
+  },
+  "dependencies": {
+    "ffmpeg-static": "^5.3.0"
+  },
+  "devDependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@tailwindcss/vite": "^4.3.5",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "electron": "^45.4.1",
+    "electron-builder": "^26.18.0",
+    "electron-vite": "^6.0.0",
+    "lucide-react": "^1.78.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tailwindcss": "^4.3.5",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "wavesurfer.js": "^8.1.0",
+    "zustand": "^5.1.0"
+  },
+  "allowScripts": {
+    "electron@45.4.1": true,
+    "ffmpeg-static@5.3.0": true
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ShadowHexYT/SongForge.git"
+  }
+}

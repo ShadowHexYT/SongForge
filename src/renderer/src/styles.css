@@ -1,0 +1,211 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/jetbrains-mono';
+
+@theme {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
+
+  --color-ink-950: #08080b;
+  --color-ink-900: #0d0d11;
+  --color-ink-850: #121218;
+  --color-ink-800: #17171f;
+  --color-ink-700: #20202a;
+  --color-ink-600: #2b2b37;
+  --color-ink-500: #3a3a48;
+  --color-ink-400: #6b6b7b;
+  --color-ink-300: #9c9cab;
+  --color-ink-200: #c9c9d4;
+  --color-ink-100: #ececf2;
+
+  --color-ember-300: #ffb08a;
+  --color-ember-400: #ff8a5c;
+  --color-ember-500: #ff6a3d;
+  --color-ember-600: #e9522a;
+  --color-gold-400: #ffc15c;
+  --color-on-accent: #0b0b0e;
+
+  --shadow-glow: 0 0 0 1px color-mix(in srgb, var(--color-ember-500) 35%, transparent), 0 8px 30px -6px color-mix(in srgb, var(--color-ember-500) 45%, transparent);
+  --shadow-accent: 0 6px 24px -8px color-mix(in srgb, var(--color-ember-500) 70%, transparent);
+}
+
+:root {
+  color-scheme: dark;
+}
+
+/* Smooth palette changes when switching themes */
+:root.theme-anim *,
+:root.theme-anim *::before,
+:root.theme-anim *::after {
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease, fill 0.25s ease !important;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-ink-950);
+  color: var(--color-ink-100);
+  font-family: var(--font-sans);
+  font-feature-settings: 'cv11', 'ss01', 'ss03';
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  overflow: hidden;
+}
+
+input,
+textarea,
+[contenteditable] {
+  user-select: text;
+}
+
+.drag {
+  -webkit-app-region: drag;
+}
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+.forge-gradient {
+  background-image: linear-gradient(135deg, var(--color-ember-500), var(--color-gold-400));
+}
+.forge-text {
+  background-image: linear-gradient(135deg, var(--color-ember-400), var(--color-gold-400));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Thin, unobtrusive scrollbars */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-ink-600);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-ink-500);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Range sliders */
+input[type='range'].sf-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--color-ink-100) var(--pct, 0%), var(--color-ink-600) var(--pct, 0%));
+  cursor: pointer;
+}
+input[type='range'].sf-range:hover {
+  background: linear-gradient(to right, var(--color-ember-500) var(--pct, 0%), var(--color-ink-600) var(--pct, 0%));
+}
+input[type='range'].sf-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: white;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+input[type='range'].sf-range:hover::-webkit-slider-thumb {
+  opacity: 1;
+}
+
+/* Waveform regions */
+#waveform ::part(region) {
+  border-radius: 6px;
+}
+#waveform ::part(region-handle) {
+  width: 6px !important;
+  border: none !important;
+  background: rgb(255 255 255 / 0.9);
+  border-radius: 3px;
+}
+#waveform ::part(region-handle-left) {
+  border-left: none !important;
+}
+#waveform ::part(region-content) {
+  font: 600 11px var(--font-sans);
+  color: white;
+  padding: 6px 8px;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.6);
+  white-space: nowrap;
+}
+#waveform ::part(cursor) {
+  width: 2px;
+}
+
+@keyframes sf-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes sf-pop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+@keyframes sf-eq {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+.eq-bar {
+  animation: sf-eq 0.9s ease-in-out infinite;
+  transform-origin: bottom;
+}
+
+@keyframes sf-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes sf-pop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+@keyframes sf-shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.06), transparent);
+  background-size: 400px 100%;
+  animation: sf-shimmer 1.4s linear infinite;
+}
