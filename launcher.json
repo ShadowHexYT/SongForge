@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "id": "songforge",
+  "name": "SongForge",
+  "type": "app",
+  "description": "Clip songs from YouTube and other sites into tagged MP3s for Spotify, with lyrics, effects, medleys and song packs.",
+  "author": "Hunter",
+  "asset": ".exe",
+  "installArgs": [
+    "/S"
+  ],
+  "detectName": "SongForge",
+  "category": "Music"
+}
