@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronDown, ExternalLink, Layers, ListMusic, Mic2, Pause, Play, SkipBack, SkipForward } from 'lucide-react'
+import { AlertCircle, ChevronDown, ExternalLink, Layers, ListMusic, Loader2, Mic2, Pause, Play, SkipBack, SkipForward } from 'lucide-react'
 import type { Song } from '@shared/types'
 import { parseLrc } from '@shared/lrc'
+import { hasHangul, romanizeKorean } from '@shared/romanize'
 import { siteName } from '@shared/sites'
 import { versionTags } from '@shared/versions'
 import { usePlayer } from '@/lib/player'
@@ -19,7 +20,10 @@ export function NowPlaying() {
   const p = usePlayer()
   const settings = useApp((s) => s.settings)
   const groups = useVersionGroups()
-  const song = p.current()
+  const playing = p.current()
+  // The queue holds a copy from when playback started; the library has the latest (new lyrics, translations)
+  const fresh = useApp((s) => (playing ? s.library.songs.find((x) => x.id === playing.id) : undefined))
+  const song = fresh ?? playing
   const versions = song ? versionsOf(groups, song) : []
   const hasLyrics = !!(song?.syncedLyrics?.trim() || song?.lyrics?.trim())
   const [panel, setPanel] = useState<Panel>(hasLyrics ? 'lyrics' : 'next')
@@ -41,8 +45,8 @@ export function NowPlaying() {
 
   return (
     <div className="fixed inset-x-0 top-0 bottom-[88px] z-40 overflow-hidden bg-ink-950 text-ink-100" style={darkVars as React.CSSProperties}>
-      {song.coverPath && <img src={mediaUrl(song.coverPath, song.updatedAt)} alt="" className="absolute inset-0 size-full scale-125 object-cover opacity-35 blur-3xl" />}
-      <div className="absolute inset-0 bg-gradient-to-b from-ink-950/40 via-ink-950/70 to-ink-950" />
+      {song.coverPath && <img src={mediaUrl(song.coverPath, song.updatedAt)} alt="" className="absolute inset-0 size-full scale-125 object-cover opacity-60 blur-3xl saturate-150" />}
+      <div className="absolute inset-0 bg-gradient-to-b from-ink-950/30 via-ink-950/60 to-ink-950/95" />
       <div className="drag absolute inset-x-0 top-0 h-10" />
       <IconButton label="Close" className="no-drag absolute left-5 top-11 z-10" onClick={() => p.setExpanded(false)}>
         <ChevronDown size={22} />
@@ -161,11 +165,89 @@ export function NowPlaying() {
   )
 }
 
+/** Romanization and translation shown under each lyric line, following the user's toggles. */
+function useLyricExtras(song: Song, lines: string[]) {
+  const settings = useApp((s) => s.settings)
+  const roman = settings?.lyricsRoman ?? true
+  const translate = settings?.lyricsTranslate ?? false
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const foreign = useMemo(() => lines.some((l) => /[^\p{Script=Latin}\P{L}]/u.test(l)), [lines])
+  const needsOnline = useMemo(() => lines.some((l) => /[^\p{Script=Latin}\p{Script=Hangul}\P{L}]/u.test(l)), [lines])
+  const extra = song.lyricsExtra
+  const want = (translate && foreign) || (roman && needsOnline)
+  const stale = !extra || extra.to !== (settings?.translateTo || 'en')
+
+  useEffect(() => {
+    if (!want) return
+    let live = true
+    setError('')
+    setBusy(true)
+    // The main process keeps the result with the song, so this only goes online once per song
+    api.lyrics
+      .translate(song.id)
+      .then(async (s) => {
+        if (live && s && JSON.stringify(s.lyricsExtra) !== JSON.stringify(extra)) useApp.getState().setLibrary(await api.library.get())
+      })
+      .catch((e) => live && setError(String((e as Error).message ?? e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')))
+      .finally(() => live && setBusy(false))
+    return () => {
+      live = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [song.id, want, stale, song.syncedLyrics, song.lyrics])
+
+  const sub = (text: string): { roman?: string; trans?: string } => {
+    const t = text.trim()
+    const e = extra?.lines[t]
+    return {
+      roman: roman ? (hasHangul(t) ? romanizeKorean(t) : e?.[0]) || undefined : undefined,
+      trans: translate ? e?.[1] || undefined : undefined
+    }
+  }
+  const toggle = async (patch: { lyricsRoman?: boolean; lyricsTranslate?: boolean }) => useApp.getState().setSettings(await api.settings.set(patch))
+  return { sub, foreign, roman, translate, busy, error, toggle }
+}
+
+function ExtraLines({ roman, trans, active, plain }: { roman?: string; trans?: string; active?: boolean; plain?: boolean }) {
+  if (!roman && !trans) return null
+  const size = plain ? 'text-[13px]' : 'text-[0.62em]'
+  return (
+    <>
+      {roman && <span className={cx('block font-medium leading-snug', size, active ? 'text-ink-200' : 'opacity-80')}>{roman}</span>}
+      {trans && <span className={cx('block font-medium leading-snug', size, active ? 'text-gold-400' : 'text-gold-400/50')}>{trans}</span>}
+    </>
+  )
+}
+
+function ExtraToggles({ x }: { x: ReturnType<typeof useLyricExtras> }) {
+  if (!x.foreign) return null
+  const pill = (on: boolean) => cx('rounded-full px-2.5 py-1 transition', on ? 'bg-white/15 text-ink-100' : 'text-ink-400 hover:bg-white/10 hover:text-ink-200')
+  return (
+    <div className="flex items-center gap-1">
+      <button className={pill(x.roman)} aria-pressed={x.roman} onClick={() => x.toggle({ lyricsRoman: !x.roman })} title="Show how the lyrics sound in Latin letters">
+        Romanized
+      </button>
+      <button className={pill(x.translate)} aria-pressed={x.translate} onClick={() => x.toggle({ lyricsTranslate: !x.translate })} title="Show a translation under each line">
+        Translation
+      </button>
+      {x.busy && <Loader2 size={13} className="ml-1 animate-spin text-ink-400" />}
+      {x.error && (
+        <span className="ml-1 text-red-400" title={x.error}>
+          <AlertCircle size={13} />
+        </span>
+      )}
+    </div>
+  )
+}
+
 /** Synced lyrics scroll along and highlight; plain lyrics are just shown. */
 function Lyrics({ song }: { song: Song }) {
   const time = usePlayer((s) => s.time)
   const seek = usePlayer((s) => s.seek)
   const lines = useMemo(() => (song.syncedLyrics ? parseLrc(song.syncedLyrics) : []), [song.syncedLyrics])
+  const texts = useMemo(() => (lines.length ? lines.map((l) => l.text) : song.lyrics.split(/\r?\n/)), [lines, song.lyrics])
+  const x = useLyricExtras(song, texts)
   const [offset, setOffset] = useState(song.lyricsOffset ?? 0)
   const listRef = useRef<HTMLDivElement>(null)
   const save = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -185,16 +267,38 @@ function Lyrics({ song }: { song: Song }) {
   let active = -1
   for (let i = 0; i < lines.length; i++) if (lines[i].time <= t) active = i
   useEffect(() => {
-    const el = listRef.current?.querySelector<HTMLElement>(`[data-line="${active}"]`)
-    el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    // Scroll only the lyrics list (scrollIntoView would also scroll the whole Now Playing view)
+    const list = listRef.current
+    const el = list?.querySelector<HTMLElement>(`[data-line="${active}"]`)
+    if (list && el) list.scrollTo({ top: el.offsetTop - list.clientHeight / 2 + el.offsetHeight / 2, behavior: 'smooth' })
   }, [active])
 
   if (!lines.length) {
-    return <p className="h-full overflow-y-auto whitespace-pre-wrap px-5 pb-5 text-[15px] leading-7 text-ink-100 select-text">{song.lyrics}</p>
+    return (
+      <div className="flex h-full flex-col">
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5 text-[15px] leading-7 text-ink-100 select-text">
+          {texts.map((l, i) =>
+            l.trim() ? (
+              <p key={i} className="pb-1">
+                {l}
+                <ExtraLines {...x.sub(l)} active plain />
+              </p>
+            ) : (
+              <p key={i} className="h-4" />
+            )
+          )}
+        </div>
+        {x.foreign && (
+          <div className="flex items-center border-t border-white/10 px-4 py-2 text-xs text-ink-300">
+            <ExtraToggles x={x} />
+          </div>
+        )}
+      </div>
+    )
   }
   return (
     <div className="flex h-full flex-col">
-      <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto px-5 py-[30%] [mask-image:linear-gradient(transparent,black_18%,black_82%,transparent)]">
+      <div ref={listRef} className="relative min-h-0 flex-1 overflow-y-auto px-5 py-[30%] [mask-image:linear-gradient(transparent,black_18%,black_82%,transparent)]">
         {lines.map((l, i) => (
           <button
             key={i}
@@ -208,16 +312,20 @@ function Lyrics({ song }: { song: Song }) {
             )}
           >
             {l.text || '♪'}
+            {l.text && <ExtraLines {...x.sub(l.text)} active={i === active} />}
           </button>
         ))}
       </div>
-      <div className="flex items-center justify-between gap-2 border-t border-white/10 px-4 py-2 text-xs text-ink-300">
-        <span title="Live versions often don't line up with the studio lyrics. Nudge them here.">Lyrics timing</span>
-        <div className="flex items-center gap-1">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 px-4 py-2 text-xs text-ink-300">
+        <ExtraToggles x={x} />
+        <div className="ml-auto flex items-center gap-1">
+          <span className="mr-1" title="Live versions often don't line up with the studio lyrics. Nudge them here.">
+            Timing
+          </span>
           <button onClick={() => changeOffset(offset - 0.5)} className="rounded-full px-2 py-1 hover:bg-white/10" title="Show lines later">
             Later
           </button>
-          <span className="w-14 text-center font-mono">
+          <span className="w-12 text-center font-mono">
             {offset > 0 ? '+' : ''}
             {offset.toFixed(1)}s
           </span>

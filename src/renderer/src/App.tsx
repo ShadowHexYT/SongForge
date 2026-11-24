@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { applyTheme, resolveTheme, systemDarkQuery } from '@/lib/theme'
 import { useApp } from '@/lib/store'
 import { usePlayer } from '@/lib/player'
@@ -14,6 +14,8 @@ import { Onboarding } from '@/components/Onboarding'
 import { Tour } from '@/components/Tour'
 import { Sheets } from '@/components/Sheets'
 import { UpdateBanner } from '@/components/UpdateBanner'
+import { SelectionBar } from '@/components/SelectionBar'
+import { useSelection } from '@/lib/selection'
 import { HelpPage } from '@/pages/Help'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { ForgePage } from '@/pages/Forge'
@@ -41,6 +43,13 @@ export default function App() {
     return () => q.removeEventListener('change', h)
   }, [refresh])
 
+  // A selection belongs to the page it was made on, and every page opens at the top
+  const scroller = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    useSelection.getState().clear()
+    scroller.current?.scrollTo(0, 0)
+  }, [route])
+
   // Apply theme whenever appearance settings or the OS theme change
   useEffect(() => {
     if (!settings) return
@@ -63,6 +72,12 @@ export default function App() {
       }
       if (t.closest('input, textarea, [contenteditable]')) return
       if (useApp.getState().route.name === 'editor') return
+      // Ctrl+A: tick every song the library or playlist shows
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a' && ['library', 'playlist'].includes(useApp.getState().route.name) && !document.querySelector('[role="dialog"]')) {
+        e.preventDefault()
+        useSelection.getState().selectAll()
+        return
+      }
       const p = usePlayer.getState()
       if (e.code === 'Space') {
         e.preventDefault()
@@ -81,7 +96,7 @@ export default function App() {
       <Sidebar collapsed={railOnly} />
       <main className="relative row-start-1 col-start-2 min-h-0 overflow-hidden rounded-tl-2xl bg-ink-900 border-l border-t border-ink-800">
         <div className="drag absolute inset-x-0 top-0 h-10 z-0" />
-        <div className="relative h-full overflow-y-auto">
+        <div ref={scroller} className="relative h-full overflow-y-auto">
           {route.name === 'forge' && <ForgePage />}
           {route.name === 'editor' && (
             <EditorPage key={route.source.id + (route.editSong?.id ?? '')} source={route.source} editSong={route.editSong} session={route.session} />
@@ -92,6 +107,7 @@ export default function App() {
           {route.name === 'settings' && <SettingsPage />}
           {route.name === 'help' && <HelpPage />}
         </div>
+        <SelectionBar />
       </main>
       <PlayerBar />
       {expanded && <NowPlaying />}

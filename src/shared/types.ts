@@ -74,6 +74,19 @@ export interface Song extends SongMeta, ClipSettings {
   medleyOf?: string[]
   /** Came from a friend's song pack */
   fromPack?: string
+  /** Translation and romanization of the lyrics, fetched once and kept */
+  lyricsExtra?: LyricsExtra
+}
+
+/** Per lyric line: [romanization, translation]. Either can be empty. */
+export interface LyricsExtra {
+  /** Language the lyrics are in, as the translator detected it ('ko', 'ja'…) */
+  lang: string
+  /** Language they were translated into */
+  to: string
+  lines: Record<string, [string, string]>
+  /** Which lyrics text this was made from, so edited lyrics get translated again */
+  key?: string
 }
 
 export interface Playlist {
@@ -136,6 +149,12 @@ export interface Settings {
   toursSeen: string[]
   /** Check GitHub for a new SongForge version on startup */
   autoUpdate: boolean
+  /** Show romanization under Korean/Japanese/Chinese lyric lines */
+  lyricsRoman: boolean
+  /** Show a translation under each lyric line */
+  lyricsTranslate: boolean
+  /** Language code lyrics are translated into */
+  translateTo: string
 }
 
 export interface ToolStatus {

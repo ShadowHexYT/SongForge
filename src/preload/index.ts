@@ -72,7 +72,9 @@ const api = {
     search: (q: string) => invoke<SearchResult[]>('youtube:search', q)
   },
   lyrics: {
-    search: (title: string, artist: string, duration?: number) => invoke<LyricsResult[]>('lyrics:search', title, artist, duration)
+    search: (title: string, artist: string, duration?: number) => invoke<LyricsResult[]>('lyrics:search', title, artist, duration),
+    /** Translate and romanize a song's lyrics (kept with the song after the first time) */
+    translate: (songId: string) => invoke<Song | null>('lyrics:translate', songId)
   },
   notify: (title: string, body: string) => invoke<void>('notify', title, body),
   session: {

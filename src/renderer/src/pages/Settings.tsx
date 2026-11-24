@@ -154,6 +154,29 @@ export function SettingsPage() {
         </Row>
       </Group>
 
+      <Group title="Lyrics">
+        <Row label="Romanized lyrics" desc="Under Korean, Japanese, Chinese and other lyrics, show how they sound in Latin letters. Korean is done on your PC.">
+          <Toggle label="Romanized lyrics" checked={settings.lyricsRoman} onChange={(v) => save({ lyricsRoman: v })} />
+        </Row>
+        <Row label="Translated lyrics" desc="Show a translation under each line. The first time for each song, its lyric lines are sent to Google Translate.">
+          <Toggle label="Translated lyrics" checked={settings.lyricsTranslate} onChange={(v) => save({ lyricsTranslate: v })} />
+        </Row>
+        <Row label="Translate into">
+          <select
+            value={settings.translateTo}
+            onChange={(e) => save({ translateTo: e.target.value })}
+            className="h-8 rounded-full border border-ink-600 bg-ink-850 px-3 text-sm text-ink-200 outline-none"
+            aria-label="Translate into"
+          >
+            {TRANSLATE_LANGS.map(([code, name]) => (
+              <option key={code} value={code}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </Row>
+      </Group>
+
       <Group title="Helpers & privacy">
         <Row label="Offer to forge copied links" desc="When you switch back to SongForge after copying a YouTube, TikTok or SoundCloud link, it asks if you want to forge it.">
           <Toggle label="Offer to forge copied links" checked={settings.clipboardWatch} onChange={(v) => save({ clipboardWatch: v })} />
@@ -166,7 +189,7 @@ export function SettingsPage() {
           <span>
             The clipboard is only read when you switch back to SongForge, only checked for a link, and never saved, logged or sent anywhere. SongForge has no accounts, tracking or analytics. The only
             outside services it talks to are the sites you download from, LRCLIB when you click "Find lyrics" and the iTunes catalog when you click "Look up" (both get just the song title and artist),
-            and GitHub to check for updates.
+            Google Translate for translated or romanized lyrics (just the lyric lines, once per song), and GitHub to check for updates.
           </span>
         </div>
       </Group>
@@ -285,3 +308,22 @@ function Row({ label, desc, status, children }: { label: string; desc?: string; 
     </div>
   )
 }
+
+/** Languages lyrics can be translated into (code, name) */
+const TRANSLATE_LANGS: Array<[string, string]> = [
+  ['en', 'English'],
+  ['es', 'Spanish'],
+  ['pt', 'Portuguese'],
+  ['fr', 'French'],
+  ['de', 'German'],
+  ['it', 'Italian'],
+  ['ko', 'Korean'],
+  ['ja', 'Japanese'],
+  ['zh-CN', 'Chinese (Simplified)'],
+  ['zh-TW', 'Chinese (Traditional)'],
+  ['th', 'Thai'],
+  ['vi', 'Vietnamese'],
+  ['id', 'Indonesian'],
+  ['tl', 'Filipino'],
+  ['ru', 'Russian']
+]

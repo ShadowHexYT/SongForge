@@ -21,7 +21,9 @@ import {
   Combine,
   CopyX,
   ScanSearch,
-  ArrowUpCircle
+  ArrowUpCircle,
+  Languages,
+  ListChecks
 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { Anvil, SmithHammer } from '@/components/ForgeIcons'
@@ -116,6 +118,18 @@ const GUIDES: Guide[] = [
     ]
   },
   {
+    id: 'translate',
+    icon: <Languages size={18} />,
+    title: 'Romanized and translated lyrics',
+    summary: 'Sing along to Korean, Japanese and Chinese songs.',
+    steps: [
+      <>Play a song with lyrics and open <b>Now Playing</b> (click the cover in the player bar).</>,
+      <>Under the lyrics, turn on <b>Romanized</b> to see how each line sounds in Latin letters, and <b>Translation</b> to see what it means.</>,
+      <>Pick the language to translate into in <b>Settings → Lyrics</b>.</>
+    ],
+    tip: <>Korean is romanized on your PC. Translations, and romanization for other languages, come from Google Translate the first time you play each song, then they're saved with the song.</>
+  },
+  {
     id: 'instrumental',
     icon: <Piano size={18} />,
     title: 'Instrumental, karaoke & vocals only',
@@ -134,8 +148,19 @@ const GUIDES: Guide[] = [
     steps: [
       <>Songs with the same title stack automatically. Look for the <Layers size={12} className="inline" /> badge in your library.</>,
       <>Click the badge to see all versions. In <b>Now Playing</b>, the <b>Versions</b> tab switches between them at the same spot in the song.</>,
-      <>Turn on <b>Stack versions</b> in the library to show one row per song.</>,
+      <>Choose <b>More → Stack versions</b> in the library to show one row per song.</>,
       <>Wrongly stacked? Use the unlink button in the Versions window.</>
+    ]
+  },
+  {
+    id: 'select',
+    icon: <ListChecks size={18} />,
+    title: 'Do things to many songs at once',
+    summary: 'Tick songs, then play, share or add them together.',
+    steps: [
+      <>In your Library or a playlist, hover a song and tick the box on its left. <b>Ctrl-click</b> ticks too, and <b>Shift-click</b> ticks everything in between. <b>Ctrl+A</b> ticks every song shown.</>,
+      <>A bar appears above the player: <b>Play</b>, <b>Queue</b>, add to a <b>Playlist</b>, make a <b>Medley</b>, <b>Share</b> as a pack, or <b>Delete</b>.</>,
+      <>Press <b>Esc</b> or the <b>✕</b> to untick everything.</>
     ]
   },
   {
@@ -156,7 +181,7 @@ const GUIDES: Guide[] = [
     title: 'Make a medley or mashup',
     summary: 'Several songs in one track, blended together.',
     steps: [
-      <>In your <b>Library</b>, click <b>Medley</b> (or open a playlist and click <b>Medley</b> to start with its songs).</>,
+      <>Tick the songs in your <b>Library</b> and click <b>Medley</b> in the bar that appears. Or use <b>More → Make a medley</b>, or <b>Medley</b> on a playlist.</>,
       <>Tick songs in the order you want them, and use the arrows to rearrange.</>,
       <>Set the <b>crossfade</b> (how long two songs overlap), and keep <b>Same loudness</b> on so no song is suddenly louder.</>,
       <>Press <b>Forge medley</b>. It's saved as a new song in your library and Spotify folder.</>
@@ -169,7 +194,7 @@ const GUIDES: Guide[] = [
     title: 'Share songs with friends',
     summary: 'Send a song pack. They get everything with one click.',
     steps: [
-      <>Click <b>Share</b> in your Library, <b>Share pack</b> on a playlist, or <b>Share with a friend</b> in a song's <b>…</b> menu.</>,
+      <>Tick songs and click <b>Share</b> in the bar that appears. Or use <b>Share pack</b> on a playlist, <b>More → Share songs</b> in the Library, or <b>Share with a friend</b> in a song's <b>…</b> menu.</>,
       <>Pick the songs, give the pack a name, and press <b>Save pack</b>. You get one <span className="font-mono">.songforge</span> file.</>,
       <>Send it however you like: Discord, Google Drive, a USB stick.</>,
       <>Your friend double-clicks it (or uses <b>Library → Import</b>). The songs arrive with covers, lyrics and versions, plus a playlist named after the pack.</>
@@ -182,7 +207,7 @@ const GUIDES: Guide[] = [
     title: 'Remove duplicate songs',
     summary: 'The same song imported or forged twice.',
     steps: [
-      <>In your <b>Library</b>, click <b>Duplicates</b>. The number shows how many songs are there more than once.</>,
+      <>In your <b>Library</b>, click <b>More → Find duplicates</b>. The number on <b>More</b> shows how many songs are there more than once.</>,
       <>For each song, choose the copy to <b>keep</b>. SongForge suggests the one in the most playlists, with lyrics and a cover.</>,
       <>Click <b>Keep one</b>, or <b>Clean up all</b>. Playlists switch to the copy you kept, so nothing goes missing.</>
     ],

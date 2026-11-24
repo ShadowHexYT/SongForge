@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { SITES, isPlaylistUrl } from '@shared/sites'
 import { Anvil } from '@/components/ForgeIcons'
+import { SongActions } from '@/components/SongActions'
 import type { SearchResult, Session } from '@shared/types'
 import { api, mediaUrl } from '@/lib/api'
 import { useApp } from '@/lib/store'
@@ -357,6 +358,41 @@ export function ForgePage() {
         </section>
       )}
 
+      {/* Recently forged: one row, newest first */}
+      {!results && songs.length > 0 && (
+        <section className="mt-12">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-ink-200">
+              <Anvil size={16} className="text-ink-400" /> Recently forged
+            </h2>
+            <button onClick={() => navigate({ name: 'library' })} className="text-xs text-ink-400 hover:text-ink-100">
+              See all →
+            </button>
+          </div>
+          <div className="grid grid-cols-3 gap-3 min-[1200px]:grid-cols-6">
+            {songs.slice(0, 6).map((s, i) => (
+              <div key={s.id} className="group relative min-w-0 rounded-xl p-2 transition hover:bg-ink-850">
+                <button onClick={() => playSongs(songs.slice(0, 6), i)} className="relative block w-full" aria-label={`Play ${s.title}`}>
+                  <Cover path={s.coverPath} seed={s.id} size={160} bust={s.updatedAt} className="!h-auto !w-full aspect-square rounded-lg shadow-lg" />
+                  <span className="absolute bottom-2 right-2 flex size-9 translate-y-2 items-center justify-center rounded-full forge-gradient text-on-accent opacity-0 shadow-lg transition group-hover:translate-y-0 group-hover:opacity-100">
+                    <Play size={16} fill="currentColor" className="ml-0.5" />
+                  </span>
+                </button>
+                <div className="mt-2 flex items-start gap-1">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[13px] font-medium">{s.title}</div>
+                    <div className="truncate text-xs text-ink-400">
+                      {s.artist || 'Unknown artist'} · {timeAgo(s.createdAt)}
+                    </div>
+                  </div>
+                  <SongActions song={s} className="-mr-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Drafts */}
       {sessions.length > 0 && (
         <section className="mt-12">
@@ -417,30 +453,6 @@ export function ForgePage() {
         </section>
       )}
 
-      {!results && songs.length > 0 && (
-        <section className="mt-12">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-ink-200">Recently forged</h2>
-            <button onClick={() => navigate({ name: 'library' })} className="text-xs text-ink-400 hover:text-ink-100">
-              See all
-            </button>
-          </div>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3">
-            {songs.slice(0, 12).map((s, i) => (
-              <button key={s.id} onClick={() => playSongs(songs, i)} className="group rounded-xl p-2 text-left transition hover:bg-ink-850">
-                <div className="relative">
-                  <Cover path={s.coverPath} seed={s.id} size={160} bust={s.updatedAt} className="!h-auto !w-full aspect-square rounded-lg" />
-                  <span className="absolute bottom-2 right-2 flex size-9 translate-y-2 items-center justify-center rounded-full forge-gradient text-on-accent opacity-0 shadow-lg transition group-hover:translate-y-0 group-hover:opacity-100">
-                    <Play size={16} fill="currentColor" className="ml-0.5" />
-                  </span>
-                </div>
-                <div className="mt-2 truncate text-[13px] font-medium">{s.title}</div>
-                <div className="truncate text-xs text-ink-400">{s.artist}</div>
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
     </div>
   )
 }

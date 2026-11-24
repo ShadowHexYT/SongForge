@@ -3,11 +3,13 @@ import { createWriteStream, existsSync, readFileSync, writeFileSync } from 'node
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { randomUUID } from 'node:crypto'
-import { Zip, ZipPassThrough, strFromU8, strToU8, unzipSync } from 'fflate'
-import { CLIP_DEFAULTS, FX_DEFAULTS, type Cleanup, type FxSettings, type ImportResult, type Song } from '@shared/types'
+import { Zip, ZipPassThrough, strFromU8, strToU8 } from 'fflate'
+import type { Cleanup, FxSettings, ImportResult, Song } from '@shared/types'
+import { PACK_ENTRY, isWeb, num, packSongFields, str } from '@shared/packFormat'
 import { ensureDir, getLibrary, getSettings, mutateLibrary, paths } from './store'
 import { lrcPathFor, sanitizeFilename, uniquePath } from './audio'
 import { probeDuration } from './youtube'
+import { openZip, type ZipReader } from './zipread'
 
 /**
  * Song packs (.songforge) are zip files holding MP3s, covers and a pack.json with each song's
@@ -55,7 +57,6 @@ interface PackManifest {
 
 type Progress = (stage: string, percent: number, detail?: string) => void
 
-const isWeb = (u: string) => /^https?:\/\//i.test(u)
 
 export async function exportPack(songIds: string[], name: string, dest: string, onProgress: Progress): Promise<{ count: number; missing: number }> {
   const lib = getLibrary()
@@ -130,32 +131,40 @@ export async function exportPack(songIds: string[], name: string, dest: string, 
   return { count: manifest.songs.length, missing }
 }
 
-// Values in a pack come from someone else's PC, so every field is checked and coerced
-const str = (v: unknown, max = 500) => (typeof v === 'string' ? v.slice(0, max) : '')
-const num = (v: unknown, lo: number, hi: number, d = 0) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d)
-const CLEANUPS: Cleanup[] = ['none', 'denoise', 'vocals', 'instrumental']
-const ENTRY = /^songs\/\d{4}\.(mp3|jpg)$/
-
-function readEntry(zipData: Uint8Array, name: string): Uint8Array | null {
-  if (!ENTRY.test(name) && name !== 'pack.json') return null
-  const files = unzipSync(zipData, { filter: (f) => f.name === name })
-  return files[name] ?? null
+function readEntry(zip: ZipReader, name: string): Uint8Array | null {
+  if (!PACK_ENTRY.test(name) && name !== 'pack.json') return null
+  return zip.read(name)
 }
 
 export async function importPack(file: string, onProgress: Progress, result: ImportResult): Promise<void> {
-  const data = new Uint8Array(readFileSync(file))
-  let manifest: PackManifest
+  const notPack = () => result.errors.push(`${file.split(/[\\/]/).pop()}: not a SongForge song pack`)
+  let data: ZipReader
   try {
-    const raw = readEntry(data, 'pack.json')
-    manifest = JSON.parse(raw ? strFromU8(raw) : '{}')
+    data = openZip(file)
   } catch {
-    result.errors.push(`${file.split(/[\\/]/).pop()}: not a SongForge song pack`)
+    notPack()
     return
   }
-  if (manifest?.format !== FORMAT || !Array.isArray(manifest.songs)) {
-    result.errors.push(`${file.split(/[\\/]/).pop()}: not a SongForge song pack`)
-    return
+  try {
+    let manifest: PackManifest
+    try {
+      const raw = readEntry(data, 'pack.json')
+      manifest = JSON.parse(raw ? strFromU8(raw) : '{}')
+    } catch {
+      notPack()
+      return
+    }
+    if (manifest?.format !== FORMAT || !Array.isArray(manifest.songs)) {
+      notPack()
+      return
+    }
+    await importSongs(data, manifest, onProgress, result)
+  } finally {
+    data.close()
   }
+}
+
+async function importSongs(data: ZipReader, manifest: PackManifest, onProgress: Progress, result: ImportResult): Promise<void> {
   const packName = str(manifest.name, 80).trim() || 'Song pack'
   const outDir = ensureDir(getSettings().outputDir)
   const existing = getLibrary().songs
@@ -166,71 +175,44 @@ export async function importPack(file: string, onProgress: Progress, result: Imp
   const list = manifest.songs.slice(0, MAX_SONGS)
 
   for (const [i, p] of list.entries()) {
-    const title = str(p?.title, 200).trim() || 'Untitled'
-    const artist = str(p?.artist, 200).trim()
+    const declared = num((p as { duration?: unknown })?.duration, 0, 24 * 3600)
+    const meta = packSongFields(p, packName, declared)
+    const { title, artist } = meta
     onProgress('Importing pack', (i / Math.max(1, list.length)) * 100, title)
     try {
-      const declared = num(p.duration, 0, 24 * 3600)
       const dupe = [...existing, ...added].find((s) => sameSong(s, title, artist, declared))
       if (dupe) {
         result.skipped++
         playlistIds.push(dupe.id)
         continue
       }
-      const mp3 = readEntry(data, str(p.file))
-      if (!mp3 || !str(p.file).endsWith('.mp3')) throw new Error('song file missing from the pack')
+      const file = str(p?.file)
+      const mp3 = file.endsWith('.mp3') ? readEntry(data, file) : null
+      if (!mp3) throw new Error('song file missing from the pack')
       const id = randomUUID()
       const filePath = uniquePath(outDir, sanitizeFilename(artist ? `${artist} - ${title}` : title), '.mp3')
       writeFileSync(filePath, mp3)
       let coverPath: string | null = null
-      const img = p.cover && str(p.cover).endsWith('.jpg') ? readEntry(data, str(p.cover)) : null
+      const cover = str(p?.cover)
+      const img = cover.endsWith('.jpg') ? readEntry(data, cover) : null
       if (img) {
         coverPath = join(paths.covers, `${id}.jpg`)
         writeFileSync(coverPath, img)
       }
-      const synced = str(p.syncedLyrics, 100_000).trim()
-      if (synced) writeFileSync(lrcPathFor(filePath), synced + '\r\n', 'utf8')
+      if (meta.syncedLyrics) writeFileSync(lrcPathFor(filePath), `${meta.syncedLyrics}\r\n`, 'utf8')
       const duration = (await probeDuration(filePath)) || declared
-      const fx = (p.fx ?? {}) as Partial<FxSettings>
-      const sourceUrl = isWeb(str(p.sourceUrl, 2000)) ? str(p.sourceUrl, 2000) : pathToFileURL(filePath).href
+      const fields = packSongFields(p, packName, duration)
       const now = Date.now()
       const song: Song = {
+        ...fields,
         id,
-        title,
-        artist,
-        album: str(p.album, 200),
-        year: str(p.year, 4).replace(/\D/g, ''),
-        genre: str(p.genre, 80),
-        lyrics: str(p.lyrics, 100_000),
-        syncedLyrics: synced || undefined,
-        start: num(p.start, 0, 24 * 3600),
-        end: num(p.end, 0, 24 * 3600, duration),
-        fadeIn: num(p.fadeIn, 0, 30),
-        fadeOut: num(p.fadeOut, 0, 30),
-        normalize: p.normalize === true,
-        cleanup: CLEANUPS.includes(p.cleanup) ? p.cleanup : 'none',
-        gain: num(p.gain, -24, 24, CLIP_DEFAULTS.gain),
-        pitch: num(p.pitch, -12, 12, CLIP_DEFAULTS.pitch),
-        speed: num(p.speed, 0.5, 2, CLIP_DEFAULTS.speed),
-        fx: {
-          bass: num(fx.bass, -12, 12, FX_DEFAULTS.bass),
-          mid: num(fx.mid, -12, 12, FX_DEFAULTS.mid),
-          treble: num(fx.treble, -12, 12, FX_DEFAULTS.treble),
-          reverb: num(fx.reverb, 0, 1, FX_DEFAULTS.reverb),
-          room: num(fx.room, 0, 1, FX_DEFAULTS.room)
-        },
         filePath,
         coverPath,
         duration,
-        sourceUrl,
+        sourceUrl: fields.sourceUrl || pathToFileURL(filePath).href,
         sourceId: '',
-        sourceTitle: str(p.sourceTitle, 300) || `${packName} (song pack)`,
         createdAt: now,
-        updatedAt: now,
-        versionGroup: str(p.versionGroup, 200) || undefined,
-        lyricsOffset: num(p.lyricsOffset, -60, 60) || undefined,
-        imported: true,
-        fromPack: packName
+        updatedAt: now
       }
       added.push(song)
       playlistIds.push(id)

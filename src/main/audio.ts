@@ -1,10 +1,12 @@
 import { copyFileSync, existsSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { CLIP_DEFAULTS, FX_DEFAULTS, type ClipSettings, type ExportRequest, type FxSettings, type Song, type SongMeta } from '@shared/types'
 import { impulseWav, reverbMix } from '@shared/reverb'
+import { parseLrc } from '@shared/lrc'
 import { ensureDir, getLibrary, getSettings, mutateLibrary, paths } from './store'
 import { demucsStatus, ffmpegPath, run } from './tools'
+import { translateLyrics } from './translate'
 
 type Progress = (stage: string, percent: number, detail?: string) => void
 
@@ -257,6 +259,29 @@ export function deleteSong(songId: string, deleteFile: boolean): void {
 }
 
 /** Update library-only fields that don't touch the MP3 (version stacking, lyrics timing). */
+/** Lyric lines of a song, for translating */
+function lyricLines(s: Song): string[] {
+  return s.syncedLyrics?.trim() ? parseLrc(s.syncedLyrics).map((l) => l.text) : s.lyrics.split(/\r?\n/)
+}
+
+/** Translate a song's lyrics once and keep the result with the song. */
+export async function translateSongLyrics(songId: string): Promise<Song | null> {
+  const song = getLibrary().songs.find((s) => s.id === songId)
+  if (!song) return null
+  const to = getSettings().translateTo || 'en'
+  const key = createHash('sha1').update(song.syncedLyrics || song.lyrics).digest('hex').slice(0, 12)
+  if (song.lyricsExtra?.key === key && song.lyricsExtra.to === to) return song
+  const extra = { ...(await translateLyrics(lyricLines(song), to)), key }
+  let out: Song | null = null
+  mutateLibrary((lib) => {
+    const s = lib.songs.find((x) => x.id === songId)
+    if (!s) return
+    s.lyricsExtra = extra
+    out = s
+  })
+  return out
+}
+
 export function patchSong(songId: string, patch: Pick<Partial<Song>, 'versionGroup' | 'lyricsOffset'>): Song | null {
   let out: Song | null = null
   mutateLibrary((lib) => {

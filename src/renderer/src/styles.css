@@ -209,3 +209,15 @@ input[type='range'].sf-range:hover::-webkit-slider-thumb {
   background-size: 400px 100%;
   animation: sf-shimmer 1.4s linear infinite;
 }
+
+/* Floating selection pill */
+@keyframes sf-pop {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

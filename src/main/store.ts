@@ -64,7 +64,10 @@ export function defaultSettings(): Settings {
     clipboardWatch: true,
     notifications: true,
     toursSeen: [],
-    autoUpdate: true
+    autoUpdate: true,
+    lyricsRoman: true,
+    lyricsTranslate: false,
+    translateTo: 'en'
   }
 }
 

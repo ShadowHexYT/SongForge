@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Download, ListMusic, Play, Plus, Search, Shuffle, Trash2, Package, Combine } from 'lucide-react'
-import { api } from '@/lib/api'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Download, ListMusic, MoreHorizontal, Play, Plus, Search, Shuffle, Trash2, Package, Combine } from 'lucide-react'
+import { api, mediaUrl } from '@/lib/api'
 import { useApp } from '@/lib/store'
 import { usePlayer } from '@/lib/player'
 import { fmtDuration, fmtTime } from '@/lib/format'
-import { Button, Cover, IconButton } from '@/components/ui'
+import { Button, Cover, IconButton, cx } from '@/components/ui'
 import { SongTable } from '@/components/SongList'
+import { EmptyState } from '@/components/EmptyState'
 import type { Song } from '@shared/types'
 
 export function PlaylistPage({ id }: { id: string }) {
@@ -53,13 +54,25 @@ export function PlaylistPage({ id }: { id: string }) {
   const exportM3U = async () => {
     if (await api.playlist.exportM3U(pl.id)) toast({ kind: 'success', title: 'Playlist exported', body: 'Saved as an .m3u8 file.' })
   }
+  const withArt = songs.filter((s) => s.coverPath)
   const covers = songs.slice(0, 4)
   const total = songs.reduce((a, s) => a + s.duration, 0)
 
   return (
-    <div className="pb-10">
-      <div className="relative flex items-end gap-7 bg-gradient-to-b from-ember-500/20 via-ink-900 to-ink-900 px-8 pt-16 pb-8">
-        <div className="grid size-48 shrink-0 grid-cols-2 overflow-hidden rounded-xl bg-ink-800 shadow-2xl">
+    <div className="pb-28">
+      <div className="relative isolate flex items-end gap-7 overflow-hidden px-8 pt-16 pb-8">
+        {/* The playlist's own covers, blurred, so the header takes their colors */}
+        <div aria-hidden className="absolute -inset-16 -z-10 grid grid-cols-2 opacity-70 blur-[60px] saturate-150">
+          {(withArt.length ? withArt : [null]).slice(0, 4).map((c, i, arr) =>
+            c ? (
+              <img key={c.id} src={mediaUrl(c.coverPath!, c.updatedAt)} alt="" className={cx('size-full object-cover', arr.length === 1 && 'col-span-2 row-span-2', arr.length === 3 && i === 2 && 'col-span-2')} />
+            ) : (
+              <div key="none" className="col-span-2 row-span-2 bg-gradient-to-br from-ember-500/50 to-gold-400/20" />
+            )
+          )}
+        </div>
+        <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-b from-ink-900/10 via-ink-900/45 to-ink-900" />
+        <div className="grid size-48 shrink-0 grid-cols-2 overflow-hidden rounded-xl bg-ink-800 shadow-[0_20px_50px_-12px_rgb(0_0_0/0.7)]">
           {covers.length >= 4 ? (
             covers.map((s) => <Cover key={s.id} path={s.coverPath} seed={s.id} size={96} bust={s.updatedAt} className="!rounded-none" />)
           ) : covers[0] ? (
@@ -71,7 +84,7 @@ export function PlaylistPage({ id }: { id: string }) {
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-300">Playlist</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-100/70">Playlist</p>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -80,7 +93,7 @@ export function PlaylistPage({ id }: { id: string }) {
             className="no-drag mt-2 w-full rounded-lg bg-transparent text-5xl font-bold tracking-tight outline-none hover:bg-white/5 focus:bg-white/5"
             aria-label="Playlist name"
           />
-          <p className="mt-3 text-sm text-ink-300">
+          <p className="mt-3 text-sm text-ink-100/75">
             {songs.length} song{songs.length === 1 ? '' : 's'}
             {total > 0 && ` · ${fmtDuration(total)}`}
           </p>
@@ -125,18 +138,28 @@ export function PlaylistPage({ id }: { id: string }) {
         >
           Medley
         </Button>
-        <Button variant="ghost" onClick={exportM3U} disabled={!songs.length} icon={<Download size={15} />}>
-          <span className="max-lg:hidden">Export </span>.m3u
-        </Button>
-        <Button variant="ghost" onClick={del} icon={<Trash2 size={15} />}>
-          Delete
-        </Button>
+        <PlaylistMenu onExport={exportM3U} onDelete={del} canExport={songs.length > 0} />
       </div>
 
       <div className="px-8">
-        {songs.length ? <SongTable songs={songs} playlistId={pl.id} /> : <p className="py-6 text-sm text-ink-400">This playlist is empty. Add songs below.</p>}
+        {songs.length ? (
+          <SongTable songs={songs} playlistId={pl.id} />
+        ) : (
+          <EmptyState
+            compact
+            title={`Nothing in “${pl.name}” yet`}
+            body="Add songs below, or tick songs in your library and choose Playlist."
+            actions={
+              library.songs.length > 0 && (
+                <Button size="sm" variant="primary" icon={<Plus size={14} />} onClick={() => document.getElementById('add-songs')?.scrollIntoView({ behavior: 'smooth' })}>
+                  Add songs
+                </Button>
+              )
+            }
+          />
+        )}
 
-        <section className="mt-12">
+        <section id="add-songs" className="mt-12 scroll-mt-6">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-lg font-semibold">Add songs</h2>
             <div className="relative w-64">
@@ -170,6 +193,36 @@ export function PlaylistPage({ id }: { id: string }) {
           )}
         </section>
       </div>
+    </div>
+  )
+}
+
+function PlaylistMenu({ onExport, onDelete, canExport }: { onExport: () => void; onDelete: () => void; canExport: boolean }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const h = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false)
+    window.addEventListener('mousedown', h)
+    return () => window.removeEventListener('mousedown', h)
+  }, [open])
+  const item = 'flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[13px] text-ink-200 hover:bg-ink-600/60 hover:text-ink-100 disabled:opacity-40'
+  return (
+    <div ref={ref} className="relative">
+      <IconButton label="More playlist actions" size="lg" onClick={() => setOpen(!open)}>
+        <MoreHorizontal size={20} />
+      </IconButton>
+      {open && (
+        <div role="menu" className="absolute left-0 top-12 z-30 w-56 rounded-xl border border-ink-600 bg-ink-800 p-1.5 shadow-2xl">
+          <button className={item} disabled={!canExport} onClick={() => (setOpen(false), onExport())}>
+            <Download size={15} /> Export as .m3u8
+          </button>
+          <div className="my-1 h-px bg-ink-600" />
+          <button className={cx(item, '!text-red-400')} onClick={() => (setOpen(false), onDelete())}>
+            <Trash2 size={15} /> Delete playlist
+          </button>
+        </div>
+      )}
     </div>
   )
 }

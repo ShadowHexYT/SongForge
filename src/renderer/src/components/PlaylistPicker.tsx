@@ -61,12 +61,13 @@ export function PlaylistPicker({ urls }: { urls: string[] }) {
   }, [info, q])
   const chosen = (info?.entries ?? []).filter((e) => picked.has(e.url))
   const total = chosen.reduce((a, e) => a + e.duration, 0)
-  const toggle = (u: string) => {
-    const next = new Set(picked)
-    if (next.has(u)) next.delete(u)
-    else next.add(u)
-    setPicked(next)
-  }
+  const toggle = (u: string) =>
+    setPicked((prev) => {
+      const next = new Set(prev)
+      if (next.has(u)) next.delete(u)
+      else next.add(u)
+      return next
+    })
   const allShown = shown.length > 0 && shown.every((e) => picked.has(e.url))
 
   const queueThem = () => {
@@ -116,14 +117,16 @@ export function PlaylistPicker({ urls }: { urls: string[] }) {
             </div>
             <button
               className="text-xs font-medium text-ink-300 hover:text-ink-100"
-              onClick={() => {
-                const next = new Set(picked)
-                for (const e of shown) {
-                  if (allShown) next.delete(e.url)
-                  else next.add(e.url)
-                }
-                setPicked(next)
-              }}
+              onClick={() =>
+                setPicked((prev) => {
+                  const next = new Set(prev)
+                  for (const e of shown) {
+                    if (allShown) next.delete(e.url)
+                    else next.add(e.url)
+                  }
+                  return next
+                })
+              }
             >
               {allShown ? 'Select none' : 'Select all'}
             </button>

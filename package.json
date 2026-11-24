@@ -1,7 +1,7 @@
 {
   "name": "songforge",
   "productName": "SongForge",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Clip songs from YouTube, tag them, and listen in SongForge or Spotify Local Files.",
   "main": "./out/main/index.js",
   "type": "module",
@@ -10,6 +10,7 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
     "start": "electron-vite preview",
     "dist": "electron-vite build && electron-builder --win --publish never"
   },
@@ -33,7 +34,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "SongForge"
+      "shortcutName": "SongForge",
+      "uninstallDisplayName": "SongForge"
     },
     "artifactName": "SongForge-Setup-${version}.${ext}",
     "publish": [
@@ -74,6 +76,7 @@
     "tailwindcss": "^4.3.5",
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
+    "vitest": "^5.1.1",
     "wavesurfer.js": "^8.1.0",
     "zustand": "^5.1.0"
   },

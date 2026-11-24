@@ -14,6 +14,7 @@ import { makeMedley } from './medley'
 import { initUpdater, checkForUpdates, downloadUpdate, installUpdate, updateState } from './updater'
 import { importSongs } from './importer'
 import { searchLyrics } from './lyrics'
+import { translateSongLyrics } from './audio'
 import { deleteSession, getSession, listSessions, saveSession } from './sessions'
 import { deleteSong, exportM3U, exportSong, mergeSongs, patchSong, retagSong, sanitizeFilename } from './audio'
 import { installDemucs, toolStatus, updateYtdlp, ensureYtdlp } from './tools'
@@ -165,6 +166,7 @@ function registerIpc() {
   ipcMain.handle('update:download', () => downloadUpdate())
   ipcMain.handle('update:install', () => installUpdate())
   ipcMain.handle('lyrics:search', (_e, title: string, artist: string, duration?: number) => searchLyrics(title, artist, duration))
+  ipcMain.handle('lyrics:translate', (_e, songId: string) => translateSongLyrics(songId))
   ipcMain.handle('session:list', () => listSessions())
   ipcMain.handle('session:get', (_e, id: string) => getSession(id))
   ipcMain.handle('session:save', (_e, s: Session) => saveSession(s))
