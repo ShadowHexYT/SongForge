@@ -4,19 +4,26 @@ import { extname, join } from 'node:path'
 import { Readable } from 'node:stream'
 import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
-import type { ExportRequest, Session, Settings, Song, SongMeta } from '@shared/types'
+import type { ExportRequest, MedleyRequest, Session, Settings, Song, SongMeta } from '@shared/types'
 import { MAX_CUSTOM_PRESETS } from '@shared/types'
 import { getLibrary, getSettings, mutateLibrary, saveSettings, ensureDir, paths } from './store'
-import { listCachedSources, prepareSource, extractStartTime, searchYouTube, AUDIO_EXT, LOCAL_EXT } from './youtube'
+import { listCachedSources, prepareSource, extractStartTime, searchYouTube, expandPlaylist, AUDIO_EXT, LOCAL_EXT } from './youtube'
+import { lookupTags, fetchArtwork } from './lookup'
+import { exportPack } from './packs'
+import { makeMedley } from './medley'
+import { initUpdater, checkForUpdates, downloadUpdate, installUpdate, updateState } from './updater'
 import { importSongs } from './importer'
 import { searchLyrics } from './lyrics'
 import { deleteSession, getSession, listSessions, saveSession } from './sessions'
-import { deleteSong, exportM3U, exportSong, patchSong, retagSong } from './audio'
+import { deleteSong, exportM3U, exportSong, mergeSongs, patchSong, retagSong, sanitizeFilename } from './audio'
 import { installDemucs, toolStatus, updateYtdlp, ensureYtdlp } from './tools'
 import { openSpotify, spotifyStatus } from './spotify'
 import { rmSync } from 'node:fs'
 
 const here = fileURLToPath(new URL('.', import.meta.url))
+
+// Separate profile for testing (keeps a developer's own library untouched)
+if (process.env.SONGFORGE_PROFILE) app.setPath('userData', process.env.SONGFORGE_PROFILE)
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'sf-media', privileges: { standard: true, secure: true, stream: true, supportFetchAPI: true, bypassCSP: true, corsEnabled: true } }
@@ -72,6 +79,21 @@ function registerMediaProtocol() {
 }
 
 let win: BrowserWindow | null = null
+
+/** Song packs opened from Explorer (double-click a .songforge file) */
+const packArgs = (argv: string[]) => argv.filter((a) => a.toLowerCase().endsWith('.songforge') && existsSync(a))
+let pendingFiles = packArgs(process.argv)
+
+// One SongForge at a time: opening a pack while it's running hands the pack to the open window
+if (!app.requestSingleInstanceLock()) app.quit()
+app.on('second-instance', (_e, argv) => {
+  if (!win) return
+  if (win.isMinimized()) win.restore()
+  win.show()
+  win.focus()
+  const files = packArgs(argv)
+  if (files.length) win.webContents.send('open-files', files)
+})
 
 function createWindow() {
   win = new BrowserWindow({
@@ -129,6 +151,19 @@ function registerIpc() {
   )
   ipcMain.handle('source:recent', () => listCachedSources())
   ipcMain.handle('youtube:search', (_e, q: string) => searchYouTube(q))
+  ipcMain.handle('source:playlist', (_e, url: string) => expandPlaylist(url))
+  ipcMain.handle('tags:lookup', (_e, title: string, artist: string, duration?: number) => lookupTags(title, artist, duration))
+  ipcMain.handle('tags:artwork', (_e, url: string) => fetchArtwork(url))
+  ipcMain.handle('app:pendingFiles', () => {
+    const f = pendingFiles
+    pendingFiles = []
+    return f
+  })
+  ipcMain.handle('app:version', () => app.getVersion())
+  ipcMain.handle('update:state', () => updateState())
+  ipcMain.handle('update:check', () => checkForUpdates())
+  ipcMain.handle('update:download', () => downloadUpdate())
+  ipcMain.handle('update:install', () => installUpdate())
   ipcMain.handle('lyrics:search', (_e, title: string, artist: string, duration?: number) => searchLyrics(title, artist, duration))
   ipcMain.handle('session:list', () => listSessions())
   ipcMain.handle('session:get', (_e, id: string) => getSession(id))
@@ -159,6 +194,23 @@ function registerIpc() {
   ipcMain.handle('song:reveal', (_e, path: string) => shell.showItemInFolder(path))
   ipcMain.handle('song:patch', (_e, id: string, patch: Pick<Partial<Song>, 'versionGroup' | 'lyricsOffset'>) => patchSong(id, patch))
   ipcMain.handle('song:import', (_e, jobId: string, inputs: string[]) => importSongs(inputs, progress(jobId)))
+  ipcMain.handle('song:merge', (_e, keepId: string, removeIds: string[]) => {
+    mergeSongs(keepId, removeIds)
+    return getLibrary()
+  })
+  ipcMain.handle('song:medley', (_e, req: MedleyRequest) => makeMedley(req, progress(req.jobId)))
+  ipcMain.handle('pack:export', async (_e, jobId: string, songIds: string[], name: string, testDest?: string) => {
+    // Automated tests (test profile only) skip the save dialog
+    if (testDest && process.env.SONGFORGE_PROFILE) return { ...(await exportPack(songIds, name, testDest, progress(jobId))), path: testDest }
+    const r = await dialog.showSaveDialog(win!, {
+      title: 'Save song pack',
+      defaultPath: join(app.getPath('desktop'), `${sanitizeFilename(name || 'Song pack')}.songforge`),
+      filters: [{ name: 'SongForge song pack', extensions: ['songforge'] }]
+    })
+    if (r.canceled || !r.filePath) return null
+    const res = await exportPack(songIds, name, r.filePath, progress(jobId))
+    return { ...res, path: r.filePath }
+  })
 
   ipcMain.handle('playlist:create', (_e, name: string, songIds: string[] = []) => {
     const id = randomUUID()
@@ -203,7 +255,12 @@ function registerIpc() {
     const r = await dialog.showOpenDialog(win!, {
       title: folder ? 'Choose a folder of songs' : 'Choose songs to import',
       properties: folder ? ['openDirectory'] : ['openFile', 'multiSelections'],
-      filters: folder ? undefined : [{ name: 'Audio', extensions: AUDIO_EXT.map((e) => e.slice(1)) }]
+      filters: folder
+        ? undefined
+        : [
+            { name: 'Songs and song packs', extensions: [...AUDIO_EXT.map((e) => e.slice(1)), 'songforge'] },
+            { name: 'SongForge song pack', extensions: ['songforge'] }
+          ]
     })
     return r.canceled ? [] : r.filePaths
   })
@@ -232,6 +289,8 @@ app.whenReady().then(() => {
   ensureDir(getSettings().outputDir)
   createWindow()
   ensureYtdlp().catch(() => {}) // warm up in background
+  initUpdater(() => win)
+  if (getSettings().autoUpdate) setTimeout(() => checkForUpdates(), 6000)
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })

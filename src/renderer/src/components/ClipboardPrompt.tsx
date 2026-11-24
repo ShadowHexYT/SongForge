@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { ClipboardPaste, Scissors, X } from 'lucide-react'
-import { extractLinks, siteName } from '@shared/sites'
+import { extractLinks, isPlaylistUrl, siteName } from '@shared/sites'
 import { api } from '@/lib/api'
 import { useApp } from '@/lib/store'
-import { useQueue } from '@/lib/queue'
+import { queueLinks, useQueue } from '@/lib/queue'
 import { Button, IconButton } from './ui'
 
 /**
@@ -55,7 +55,7 @@ export function ClipboardPrompt() {
 
   if (!link) return null
   const forge = () => {
-    useQueue.getState().add([{ url: link }], true)
+    queueLinks([link])
     const st = useApp.getState()
     if (st.route.name !== 'forge' && st.route.name !== 'editor') st.navigate({ name: 'forge' })
     setLink(null)
@@ -67,7 +67,7 @@ export function ClipboardPrompt() {
           <ClipboardPaste size={18} />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold">Forge the link you copied?</div>
+          <div className="text-sm font-semibold">{isPlaylistUrl(link) ? 'Forge songs from the playlist you copied?' : 'Forge the link you copied?'}</div>
           <div className="truncate text-[11px] text-ink-400">
             <span className="font-semibold text-ink-300">{siteName(link) ?? 'Link'}</span> · <span className="font-mono">{link.replace(/^https?:\/\/(www\.)?/, '')}</span>
           </div>

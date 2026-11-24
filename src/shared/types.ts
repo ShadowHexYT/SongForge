@@ -70,6 +70,10 @@ export interface Song extends SongMeta, ClipSettings {
   importedFrom?: string
   /** Shift (seconds) applied to synced lyrics, for live versions that don't line up */
   lyricsOffset?: number
+  /** Song ids this medley was made from */
+  medleyOf?: string[]
+  /** Came from a friend's song pack */
+  fromPack?: string
 }
 
 export interface Playlist {
@@ -130,6 +134,8 @@ export interface Settings {
   notifications: boolean
   /** Guided tours already shown ('app', 'studio') */
   toursSeen: string[]
+  /** Check GitHub for a new SongForge version on startup */
+  autoUpdate: boolean
 }
 
 export interface ToolStatus {
@@ -182,6 +188,63 @@ export interface ImportResult {
   added: number
   skipped: number
   errors: string[]
+  /** Playlists created from song packs */
+  playlists?: string[]
+}
+
+/** A match from the music catalog lookup (iTunes Search). */
+export interface TagMatch {
+  id: number
+  title: string
+  artist: string
+  album: string
+  year: string
+  genre: string
+  duration: number
+  /** Small artwork for the list */
+  thumb: string
+  /** Large artwork (1000px) to use as the cover */
+  artwork: string
+}
+
+export interface PlaylistEntry {
+  url: string
+  title: string
+  channel: string
+  duration: number
+  thumbnail: string
+}
+
+export interface PlaylistInfo {
+  title: string
+  channel: string
+  entries: PlaylistEntry[]
+  /** True when the list was cut at the maximum size */
+  truncated: boolean
+}
+
+export interface MedleyRequest {
+  jobId: string
+  songIds: string[]
+  /** Crossfade between songs in seconds (0 = back to back) */
+  crossfade: number
+  /** Level every song to the same loudness first */
+  normalize: boolean
+  /** Fade out the last song */
+  fadeOut: boolean
+  title: string
+  artist: string
+  album: string
+}
+
+export type UpdateStatus = 'idle' | 'checking' | 'none' | 'available' | 'downloading' | 'ready' | 'error' | 'dev'
+
+export interface UpdateState {
+  status: UpdateStatus
+  current: string
+  version?: string
+  percent?: number
+  error?: string
 }
 
 export interface SearchResult {

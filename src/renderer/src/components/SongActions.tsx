@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ExternalLink, FolderOpen, ListPlus, MoreHorizontal, Pencil, Scissors, Trash2, ListMinus, ListEnd, Layers } from 'lucide-react'
+import { ExternalLink, FolderOpen, ListPlus, MoreHorizontal, Pencil, Scissors, Trash2, ListMinus, ListEnd, Layers, Package } from 'lucide-react'
 import type { Song } from '@shared/types'
 import { siteName } from '@shared/sites'
 import { useVersionGroups, versionsOf } from '@/lib/versions'
@@ -118,6 +118,16 @@ export function SongActions({ song, playlistId, className }: { song: Song; playl
           </button>
           <button className={item} onClick={() => (api.song.reveal(song.filePath), setOpen(false))}>
             <FolderOpen size={15} /> Show in folder
+          </button>
+          <button
+            className={item}
+            onClick={() => {
+              const ids = versionCount > 1 ? versionsOf(groups, song).map((s) => s.id) : [song.id]
+              useApp.getState().openSheet({ kind: 'pack', songIds: ids, name: song.title })
+              setOpen(false)
+            }}
+          >
+            <Package size={15} /> Share with a friend
           </button>
           {site && (
             <button className={item} onClick={() => (api.shell.openExternal(song.sourceUrl), setOpen(false))}>

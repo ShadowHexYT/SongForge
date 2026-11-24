@@ -33,6 +33,15 @@ On first launch the app downloads `yt-dlp.exe` into `%APPDATA%\SongForge\bin`. f
 - **Help & tutorial page** in the sidebar: start the tours, read searchable step-by-step guides (first song, finding songs in long videos, trimming, effects, lyrics, instrumental, versions, import, Spotify on PC and phone, troubleshooting) and see the keyboard shortcuts.
 - Tours and steps are defined in `src/renderer/src/components/Tour.tsx`. A step points at an element through its `data-tour="…"` attribute.
 
+### New in 1.1
+- **Updates inside the app.** SongForge checks the GitHub releases when it starts (this can be turned off in Settings → Updates). When a new version is out, a card offers **Download update**, then **Restart now**. Songs and settings are kept. Versions before 1.1 have to install 1.1 by hand once.
+- **Song packs.** **Share** in the Library, **Share pack** on a playlist, or **Share with a friend** on a song saves a `.songforge` file. It holds the MP3s, covers, tags, lyrics and version info, but no file paths from your PC. A friend double-clicks it (or uses Import) and gets the songs plus a playlist named after the pack. Songs they already have are skipped.
+- **Look up.** In the studio's Tags tab and in Edit details, **Look up** finds the album, year, genre and official cover in the free iTunes catalog. Only the title and artist are sent.
+- **Whole playlists and channels.** Paste a YouTube playlist or channel, or a SoundCloud set or artist page, and pick which videos to queue. Videos you've already forged are marked. Short lists start fully ticked; long ones (over 50 videos) start empty.
+- **Find duplicates.** Finds songs that are in the library more than once (same title, artist, sound and length, or the same clip of the same video). You pick the copy to keep, and playlists switch to it. Different versions never count as duplicates.
+- **Medley / mashup.** Join songs into one track, with an adjustable crossfade, matched loudness and a fade-out at the end.
+- **Phone guide.** The Spotify page has step-by-step iPhone and Android instructions and a troubleshooting checklist.
+
 ### Round 3
 - **First-run setup.** Five short steps: welcome, theme and accent, Spotify folder, helpers, done. Run it again from Settings.
 - **Suggest clips.** Finds the songs in long videos. It uses chapters when the video has them (merging intro, dance-break and remix parts of the same song) and otherwise listens for music between quieter talking parts. Opening a long video shows a "Found N songs" banner.

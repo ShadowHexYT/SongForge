@@ -12,6 +12,8 @@ import { VersionsDialog } from '@/components/VersionsDialog'
 import { ClipboardPrompt } from '@/components/ClipboardPrompt'
 import { Onboarding } from '@/components/Onboarding'
 import { Tour } from '@/components/Tour'
+import { Sheets } from '@/components/Sheets'
+import { UpdateBanner } from '@/components/UpdateBanner'
 import { HelpPage } from '@/pages/Help'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { ForgePage } from '@/pages/Forge'
@@ -98,6 +100,8 @@ export default function App() {
       <VersionsDialog />
       <ClipboardPrompt />
       {settings && !settings.onboarded && <Onboarding onImport={() => useApp.getState().setImportOpen(true)} />}
+      <Sheets />
+      <UpdateBanner />
       <Tour />
       <Toasts />
     </div>

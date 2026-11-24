@@ -1,7 +1,7 @@
 {
   "name": "songforge",
   "productName": "SongForge",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Clip songs from YouTube, tag them, and listen in SongForge or Spotify Local Files.",
   "main": "./out/main/index.js",
   "type": "module",
@@ -35,9 +35,26 @@
       "createStartMenuShortcut": true,
       "shortcutName": "SongForge"
     },
-    "artifactName": "SongForge-Setup-${version}.${ext}"
+    "artifactName": "SongForge-Setup-${version}.${ext}",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "ShadowHexYT",
+        "repo": "SongForge"
+      }
+    ],
+    "fileAssociations": [
+      {
+        "ext": "songforge",
+        "name": "SongForge song pack",
+        "description": "SongForge song pack",
+        "role": "Viewer"
+      }
+    ]
   },
   "dependencies": {
+    "electron-updater": "^6.8.11",
+    "fflate": "^0.8.3",
     "ffmpeg-static": "^5.3.0"
   },
   "devDependencies": {

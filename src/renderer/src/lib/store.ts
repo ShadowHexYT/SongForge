@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { LibraryData, PreparedSource, Session, Settings, Song } from '@shared/types'
+import type { LibraryData, PreparedSource, Session, Settings, Song, UpdateState } from '@shared/types'
 import { api } from './api'
 
 export type Route =
@@ -18,6 +18,13 @@ export interface Toast {
   body?: string
 }
 
+/** Full-screen helpers opened from anywhere */
+export type Sheet =
+  | { kind: 'pack'; songIds: string[]; name: string }
+  | { kind: 'medley'; songIds: string[] }
+  | { kind: 'dupes' }
+  | { kind: 'playlist'; urls: string[] }
+
 interface AppState {
   route: Route
   library: LibraryData
@@ -28,7 +35,13 @@ interface AppState {
   importOpen: boolean
   /** Song whose versions are shown in the Versions dialog */
   versionsOf: Song | null
-  setImportOpen: (v: boolean) => void
+  /** Files to import as soon as the dialog opens (song packs opened from Explorer) */
+  importFiles: string[] | null
+  setImportOpen: (v: boolean, files?: string[]) => void
+  sheet: Sheet | null
+  openSheet: (s: Sheet | null) => void
+  update: UpdateState | null
+  setUpdate: (u: UpdateState) => void
   showVersions: (s: Song | null) => void
   /** The guided tour that's running, if any */
   tour: string | null
@@ -53,7 +66,12 @@ export const useApp = create<AppState>((set) => ({
   editingSong: null,
   importOpen: false,
   versionsOf: null,
-  setImportOpen: (importOpen) => set({ importOpen }),
+  importFiles: null,
+  setImportOpen: (importOpen, files) => set({ importOpen, importFiles: files ?? null }),
+  sheet: null,
+  openSheet: (sheet) => set({ sheet }),
+  update: null,
+  setUpdate: (update) => set({ update }),
   showVersions: (versionsOf) => set({ versionsOf }),
   tour: null,
   startTour: (tour) => set({ tour }),

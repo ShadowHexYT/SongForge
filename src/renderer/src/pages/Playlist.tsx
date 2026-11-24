@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Download, ListMusic, Play, Plus, Search, Shuffle, Trash2 } from 'lucide-react'
+import { Download, ListMusic, Play, Plus, Search, Shuffle, Trash2, Package, Combine } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useApp } from '@/lib/store'
 import { usePlayer } from '@/lib/player'
@@ -108,8 +108,25 @@ export function PlaylistPage({ id }: { id: string }) {
         >
           <Shuffle size={20} />
         </IconButton>
+        <Button
+          variant="ghost"
+          onClick={() => useApp.getState().openSheet({ kind: 'pack', songIds: songs.map((s) => s.id), name: pl.name })}
+          disabled={!songs.length}
+          icon={<Package size={15} />}
+          title="Send this playlist to a friend as one file"
+        >
+          Share pack
+        </Button>
+        <Button
+          variant="ghost"
+          onClick={() => useApp.getState().openSheet({ kind: 'medley', songIds: songs.map((s) => s.id) })}
+          disabled={songs.length < 2}
+          icon={<Combine size={15} />}
+        >
+          Medley
+        </Button>
         <Button variant="ghost" onClick={exportM3U} disabled={!songs.length} icon={<Download size={15} />}>
-          Export .m3u
+          <span className="max-lg:hidden">Export </span>.m3u
         </Button>
         <Button variant="ghost" onClick={del} icon={<Trash2 size={15} />}>
           Delete

@@ -40,6 +40,8 @@ export function versionTags(s: Song): string[] {
   if (s.pitch) t.push(`${s.pitch > 0 ? '+' : ''}${s.pitch} st`)
   if (s.fx?.reverb) t.push('Reverb')
   if (s.fx && (s.fx.bass || s.fx.mid || s.fx.treble)) t.push('EQ')
-  if (s.imported) t.push('Imported')
+  if (s.medleyOf?.length) t.push('Medley')
+  if (s.fromPack) t.push('From a pack')
+  else if (s.imported) t.push('Imported')
   return t
 }

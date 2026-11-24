@@ -8,6 +8,8 @@ import { CoverCropper, type CoverState } from '../CoverCropper'
 import { LyricsPanel } from '../LyricsPanel'
 import { Button, Field, Input, Range, Toggle, cx } from '../ui'
 import { EdgeZoom } from './EdgeZoom'
+import { TagLookupButton } from '../TagLookup'
+import { mediaUrl } from '@/lib/api'
 import { FX_PRESETS, SPEED_PRESETS, fxEqual, newKey, type Draft } from './model'
 
 export type InspectorTab = 'trim' | 'sound' | 'tags' | 'lyrics' | 'cover'
@@ -449,7 +451,7 @@ function SoundTab({ draft, onClip, demucsOk, onApplyToAll, clipCount }: Props) {
   )
 }
 
-function TagsTab({ draft, onMeta, onAutofill, onApplyToAll, clipCount }: Props) {
+function TagsTab({ draft, onMeta, onAutofill, onApplyToAll, onCover, clipCount }: Props) {
   const library = useApp((s) => s.library)
   const artists = useMemo(() => [...new Set(library.songs.map((s) => s.artist).filter(Boolean))], [library.songs])
   const albums = useMemo(() => [...new Set(library.songs.map((s) => s.album).filter(Boolean))], [library.songs])
@@ -457,10 +459,24 @@ function TagsTab({ draft, onMeta, onAutofill, onApplyToAll, clipCount }: Props) 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <span className="text-xs text-ink-400">Tags are written into the MP3 and show in Spotify.</span>
-        <Button size="sm" variant="ghost" onClick={onAutofill} icon={<Sparkles size={13} />} title="Guess the title and artist from the video title">
-          Auto-fill
-        </Button>
+        <span className="text-xs text-ink-400">Saved in the MP3 for Spotify.</span>
+        <div className="flex shrink-0">
+          <Button size="sm" variant="ghost" onClick={onAutofill} icon={<Sparkles size={13} />} title="Guess the title and artist from the video title">
+            Auto-fill
+          </Button>
+          <TagLookupButton
+            title={m.title}
+            artist={m.artist}
+            duration={(draft.clip.end - draft.clip.start) / (draft.clip.speed || 1)}
+            onPick={({ match, coverPath }) => {
+              if (!m.artist) onMeta('artist', match.artist)
+              onMeta('album', match.album)
+              onMeta('year', match.year)
+              onMeta('genre', match.genre)
+              if (coverPath) onCover({ kind: 'upload', src: mediaUrl(coverPath), panX: 0.5, panY: 0.5, zoom: 1 })
+            }}
+          />
+        </div>
       </div>
       <Field label="Title">
         <Input value={m.title} onChange={(e) => onMeta('title', e.target.value)} placeholder="Song title" />

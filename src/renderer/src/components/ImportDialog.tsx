@@ -9,6 +9,7 @@ import { Button, Modal, ProgressBar, cx } from './ui'
 /** Bring songs you already have (MP3, M4A, FLAC, WAV…) into the library and Spotify folder. */
 export function ImportDialog() {
   const open = useApp((s) => s.importOpen)
+  const handed = useApp((s) => s.importFiles)
   const setOpen = useApp((s) => s.setImportOpen)
   const refresh = useApp((s) => s.refresh)
   const toast = useApp((s) => s.toast)
@@ -31,6 +32,15 @@ export function ImportDialog() {
       }),
     []
   )
+
+  // Packs double-clicked in Explorer or dropped on the Forge page start right away
+  useEffect(() => {
+    if (open && handed?.length && !busy) {
+      useApp.setState({ importFiles: null })
+      run(handed)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, handed])
 
   const run = async (paths: string[]) => {
     if (!paths.length) return
@@ -72,8 +82,8 @@ export function ImportDialog() {
               <Upload size={22} />
             </div>
             <div>
-              <div className="font-semibold">Drop songs or a folder here</div>
-              <div className="mt-1 text-xs text-ink-400">MP3, M4A, FLAC, WAV, OGG and more</div>
+              <div className="font-semibold">Drop songs, a folder or a song pack here</div>
+              <div className="mt-1 text-xs text-ink-400">MP3, M4A, FLAC, WAV, OGG and more, or a .songforge pack from a friend</div>
             </div>
             <div className="mt-2 flex gap-2">
               <Button size="sm" variant="primary" icon={<FileAudio size={14} />} onClick={async () => run(await api.dialog.pickSongs(false))}>
@@ -86,7 +96,7 @@ export function ImportDialog() {
           </div>
           <p className="mt-4 text-xs leading-relaxed text-ink-400">
             Title, artist, album, cover art and lyrics are read from the files. MP3s are copied into your SongForge folder so Spotify sees them, and other formats are converted to MP3. Your
-            originals aren't changed.
+            originals aren't changed. A song pack also arrives as a playlist.
           </p>
         </>
       )}
@@ -112,6 +122,11 @@ export function ImportDialog() {
             {result.skipped > 0 && `${result.skipped} already in your library. `}
             {result.errors.length > 0 && `${result.errors.length} couldn't be read.`}
           </div>
+          {!!result.playlists?.length && (
+            <div className="mt-2 text-sm text-ink-300">
+              Added the playlist{result.playlists.length > 1 ? 's' : ''} <b>{result.playlists.join(', ')}</b>.
+            </div>
+          )}
           {result.errors.length > 0 && (
             <pre className="mt-3 max-h-32 overflow-auto rounded-lg bg-ink-950 p-3 text-left font-mono text-[11px] text-ink-400 select-text">{result.errors.join('\n')}</pre>
           )}

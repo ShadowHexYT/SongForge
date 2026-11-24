@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { PreparedSource } from '@shared/types'
-import { extractLinks } from '@shared/sites'
+import { extractLinks, isPlaylistUrl } from '@shared/sites'
 import { api, newJobId } from './api'
 import { useApp } from './store'
 
@@ -31,6 +31,18 @@ interface QueueState {
 
 /** Links in pasted text: YouTube, TikTok, Instagram, SoundCloud and any other http(s) link. */
 export const extractUrls = (text: string) => extractLinks(text, true)
+
+/**
+ * Queue pasted links. Playlists and channels open a picker so you can choose which videos to get;
+ * a single video opens in the studio when it's ready.
+ */
+export function queueLinks(urls: string[]): { videos: number; lists: number } {
+  const lists = urls.filter(isPlaylistUrl)
+  const videos = urls.filter((u) => !isPlaylistUrl(u))
+  if (videos.length) useQueue.getState().add(videos.map((url) => ({ url })), videos.length === 1 && !lists.length)
+  if (lists.length) useApp.getState().openSheet({ kind: 'playlist', urls: lists })
+  return { videos: videos.length, lists: lists.length }
+}
 
 /** Queue a file from this PC (audio or video) as a source. */
 export function addFile(path: string) {
@@ -71,7 +83,10 @@ async function pump() {
         patch({ status: 'ready', source, title: source.title, progress: 100, stage: 'Ready' })
         const st = useApp.getState()
         if (item.autoOpen && (st.route.name === 'forge' || st.route.name === 'library')) await useQueue.getState().open(item.id)
-        else if (!item.url.startsWith('file:')) api.notify('Ready to clip', source.title)
+        else if (!item.url.startsWith('file:') && !useQueue.getState().items.some((i) => i.status === 'waiting')) {
+          const ready = useQueue.getState().items.filter((i) => i.status === 'ready').length
+          api.notify(ready > 1 ? `${ready} videos ready to clip` : 'Ready to clip', ready > 1 ? 'Open them from the Forge page.' : source.title)
+        }
       } catch (e) {
         patch({ status: 'error', error: cleanError(e) })
         api.notify("Couldn't download a video", cleanError(e))

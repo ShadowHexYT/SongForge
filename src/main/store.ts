@@ -63,7 +63,8 @@ export function defaultSettings(): Settings {
     fxPresets: [],
     clipboardWatch: true,
     notifications: true,
-    toursSeen: []
+    toursSeen: [],
+    autoUpdate: true
   }
 }
 

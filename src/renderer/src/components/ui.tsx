@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { mediaUrl } from '@/lib/api'
 
@@ -171,15 +172,24 @@ export function Range({
   )
 }
 
+/** Open windows, newest last, so Escape closes only the one on top. */
+const modalStack: symbol[] = []
+
 export function Modal({ open, onClose, title, children, width = 'max-w-2xl' }: { open: boolean; onClose: () => void; title: string; children: ReactNode; width?: string }) {
   useEffect(() => {
     if (!open) return
-    const h = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    const me = Symbol(title)
+    modalStack.push(me)
+    const h = (e: KeyboardEvent) => e.key === 'Escape' && modalStack[modalStack.length - 1] === me && onClose()
     window.addEventListener('keydown', h)
-    return () => window.removeEventListener('keydown', h)
-  }, [open, onClose])
+    return () => {
+      window.removeEventListener('keydown', h)
+      modalStack.splice(modalStack.indexOf(me), 1)
+    }
+  }, [open, onClose, title])
   if (!open) return null
-  return (
+  // Portaled to <body> so a window opened from inside a panel always covers the whole app
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-6" onMouseDown={onClose}>
       <div
         className={cx('w-full max-h-[90vh] overflow-auto rounded-2xl border border-ink-600 bg-ink-850 shadow-2xl', width)}
@@ -195,7 +205,8 @@ export function Modal({ open, onClose, title, children, width = 'max-w-2xl' }: {
         </div>
         <div className="p-6">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

@@ -23,11 +23,38 @@ export function siteName(url: string): string | null {
   }
 }
 
-/** A YouTube link must point at a video, not a channel or the home page. */
+const YT_VIDEO = /(?:v=|\/shorts\/|youtu\.be\/|\/embed\/|\/live\/)[A-Za-z0-9_-]{11}/
+
+/**
+ * Links to many videos at once: YouTube playlists and channels, SoundCloud sets and artist pages.
+ * A video link that also carries a playlist (watch?v=…&list=…) counts as the single video.
+ */
+export function isPlaylistUrl(url: string): boolean {
+  let u: URL
+  try {
+    u = new URL(url)
+  } catch {
+    return false
+  }
+  const name = siteName(url)
+  if (name === 'YouTube') {
+    if (YT_VIDEO.test(url)) return false
+    if (u.searchParams.get('list')) return true
+    return /^\/(@[^/]+|channel\/[^/]+|c\/[^/]+|user\/[^/]+)(\/(videos|streams|shorts|playlists|featured))?\/?$/.test(u.pathname)
+  }
+  if (name === 'SoundCloud') {
+    const parts = u.pathname.split('/').filter(Boolean)
+    if (parts[1] === 'sets') return parts.length === 3
+    return parts.length === 1 || (parts.length === 2 && ['tracks', 'popular-tracks', 'albums', 'likes'].includes(parts[1]))
+  }
+  return false
+}
+
+/** A YouTube link must point at a video, playlist or channel, not the home page. */
 function isUsable(url: string): boolean {
   const name = siteName(url)
   if (name !== 'YouTube') return true
-  return /(?:v=|\/shorts\/|youtu\.be\/|\/embed\/|\/live\/)[A-Za-z0-9_-]{11}/.test(url)
+  return YT_VIDEO.test(url) || isPlaylistUrl(url)
 }
 
 const URL_RE = /\b(?:https?:\/\/)?(?:[a-z0-9-]+\.)+[a-z]{2,}\/[^\s<>"'，、]*/gi

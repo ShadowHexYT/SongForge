@@ -3,6 +3,10 @@ import type {
   ExportRequest,
   ImportResult,
   LyricsResult,
+  MedleyRequest,
+  PlaylistInfo,
+  TagMatch,
+  UpdateState,
   SearchResult,
   Session,
   LibraryData,
@@ -29,7 +33,40 @@ const api = {
     prepare: (jobId: string, url: string) => invoke<PreparedSource & { startHint: number | null }>('source:prepare', jobId, url),
     recent: () =>
       invoke<Array<Pick<PreparedSource, 'id' | 'title' | 'channel' | 'url' | 'duration' | 'thumbnailPath'>>>('source:recent'),
-    clearCache: () => invoke<boolean>('source:clearCache')
+    clearCache: () => invoke<boolean>('source:clearCache'),
+    playlist: (url: string) => invoke<PlaylistInfo>('source:playlist', url)
+  },
+  tags: {
+    lookup: (title: string, artist: string, duration?: number) => invoke<TagMatch[]>('tags:lookup', title, artist, duration),
+    artwork: (url: string) => invoke<string>('tags:artwork', url)
+  },
+  pack: {
+    export: (jobId: string, songIds: string[], name: string, testDest?: string) =>
+      invoke<{ count: number; missing: number; path: string } | null>('pack:export', jobId, songIds, name, testDest)
+  },
+  app: {
+    version: () => invoke<string>('app:version'),
+    pendingFiles: () => invoke<string[]>('app:pendingFiles'),
+    onOpenFiles: (cb: (files: string[]) => void) => {
+      const h = (_: unknown, f: string[]) => cb(f)
+      ipcRenderer.on('open-files', h)
+      return () => {
+        ipcRenderer.removeListener('open-files', h)
+      }
+    }
+  },
+  updates: {
+    state: () => invoke<UpdateState>('update:state'),
+    check: () => invoke<UpdateState>('update:check'),
+    download: () => invoke<void>('update:download'),
+    install: () => invoke<void>('update:install'),
+    onState: (cb: (s: UpdateState) => void) => {
+      const h = (_: unknown, s: UpdateState) => cb(s)
+      ipcRenderer.on('update:state', h)
+      return () => {
+        ipcRenderer.removeListener('update:state', h)
+      }
+    }
   },
   youtube: {
     search: (q: string) => invoke<SearchResult[]>('youtube:search', q)
@@ -53,7 +90,9 @@ const api = {
     delete: (id: string, deleteFile: boolean) => invoke<LibraryData>('song:delete', id, deleteFile),
     reveal: (path: string) => invoke<void>('song:reveal', path),
     patch: (id: string, patch: Pick<Partial<Song>, 'versionGroup' | 'lyricsOffset'>) => invoke<Song | null>('song:patch', id, patch),
-    import: (jobId: string, inputs: string[]) => invoke<ImportResult>('song:import', jobId, inputs)
+    import: (jobId: string, inputs: string[]) => invoke<ImportResult>('song:import', jobId, inputs),
+    merge: (keepId: string, removeIds: string[]) => invoke<LibraryData>('song:merge', keepId, removeIds),
+    medley: (req: MedleyRequest) => invoke<Song>('song:medley', req)
   },
   playlist: {
     create: (name: string, songIds?: string[]) => invoke<string>('playlist:create', name, songIds),

@@ -9,6 +9,7 @@ import { Button, Field, Input, Modal, cx } from './ui'
 import { LyricsPanel } from './LyricsPanel'
 import { CoverCropper, emptyCover, renderCover, type CoverState } from './CoverCropper'
 import { reclip, removeSong } from './SongActions'
+import { TagLookupButton } from './TagLookup'
 
 export function SongEditDialog() {
   const song = useApp((s) => s.editingSong)
@@ -83,6 +84,18 @@ export function SongEditDialog() {
             />
           ) : (
           <>
+          <div className="-mb-2 flex items-center justify-between">
+            <span className="text-xs text-ink-400">Missing the album or cover?</span>
+            <TagLookupButton
+              title={meta.title}
+              artist={meta.artist}
+              duration={song.duration}
+              onPick={({ match, coverPath }) => {
+                setMeta({ ...meta, artist: meta.artist || match.artist, album: match.album, year: match.year, genre: match.genre })
+                if (coverPath) setCover({ kind: 'upload', src: mediaUrl(coverPath), panX: 0.5, panY: 0.5, zoom: 1 })
+              }}
+            />
+          </div>
           <Field label="Title">
             <Input value={meta.title} onChange={(e) => set('title', e.target.value)} autoFocus />
           </Field>

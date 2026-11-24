@@ -269,6 +269,30 @@ export function patchSong(songId: string, patch: Pick<Partial<Song>, 'versionGro
   return out
 }
 
+/**
+ * Keep one copy of a duplicated song and remove the others. Playlists that held a removed copy
+ * get the kept one instead, so nothing disappears from a playlist.
+ */
+export function mergeSongs(keepId: string, removeIds: string[]): void {
+  const lib = getLibrary()
+  const keep = lib.songs.find((s) => s.id === keepId)
+  if (!keep) throw new Error('Song not found')
+  const doomed = lib.songs.filter((s) => removeIds.includes(s.id) && s.id !== keepId)
+  for (const s of doomed) {
+    // Never delete the file the kept song uses
+    if (resolve(s.filePath) !== resolve(keep.filePath) && existsSync(s.filePath)) {
+      rmSync(s.filePath)
+      rmSync(lrcPathFor(s.filePath), { force: true })
+    }
+    if (s.coverPath && s.coverPath !== keep.coverPath && existsSync(s.coverPath)) rmSync(s.coverPath)
+  }
+  const gone = new Set(doomed.map((s) => s.id))
+  mutateLibrary((l) => {
+    l.songs = l.songs.filter((s) => !gone.has(s.id))
+    for (const p of l.playlists) p.songIds = [...new Set(p.songIds.map((id) => (gone.has(id) ? keepId : id)))]
+  })
+}
+
 export function exportM3U(playlistId: string, dest: string): void {
   const lib = getLibrary()
   const pl = lib.playlists.find((p) => p.id === playlistId)

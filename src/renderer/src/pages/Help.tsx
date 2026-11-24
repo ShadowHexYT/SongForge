@@ -15,7 +15,13 @@ import {
   Upload,
   Wand2,
   RotateCcw,
-  Play
+  Play,
+  ListVideo,
+  Package,
+  Combine,
+  CopyX,
+  ScanSearch,
+  ArrowUpCircle
 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { Anvil, SmithHammer } from '@/components/ForgeIcons'
@@ -58,6 +64,19 @@ const GUIDES: Guide[] = [
       <>Press <b>Forge all</b> at the top right.</>
     ],
     tip: <>No luck? While listening, press <Kbd>M</Kbd> wherever a song starts. Each marker turns into a clip with the scissors button.</>
+  },
+  {
+    id: 'playlists',
+    icon: <ListVideo size={18} />,
+    title: 'Get songs from a whole playlist or channel',
+    summary: 'YouTube playlists and channels, SoundCloud sets and artist pages.',
+    steps: [
+      <>Paste a playlist or channel link in <b>Forge</b> (or copy it and switch back to SongForge).</>,
+      <>A list of its videos opens. Videos you've already forged are unticked and marked <b>Already in your library</b>.</>,
+      <>Untick anything you don't want, or type in <b>Filter</b> to find songs, then press <b>Queue</b>.</>,
+      <>They download one at a time in the background. Open each one from the queue when it's ready.</>
+    ],
+    tip: <>A video link that's playing inside a playlist (it has both <span className="font-mono">v=</span> and <span className="font-mono">list=</span>) opens just that video. Use the playlist's own page link to get them all.</>
   },
   {
     id: 'trim',
@@ -120,6 +139,56 @@ const GUIDES: Guide[] = [
     ]
   },
   {
+    id: 'lookup',
+    icon: <ScanSearch size={18} />,
+    title: 'Fill in the album, year, genre and cover',
+    summary: 'Look songs up instead of typing.',
+    steps: [
+      <>In the studio's <b>Tags</b> tab, or in <b>Edit details</b> on a song in your library, click <b>Look up</b>.</>,
+      <>Pick the right match. The album, year and genre are filled in, and your title and artist stay as they are.</>,
+      <>Leave <b>Also use the album cover</b> on to swap in the official cover art, or turn it off to keep yours.</>
+    ],
+    tip: <>Fancam or live clip? Look up the studio song to get its album and cover, then keep your own title like “Love Dive (Live)”.</>
+  },
+  {
+    id: 'medley',
+    icon: <Combine size={18} />,
+    title: 'Make a medley or mashup',
+    summary: 'Several songs in one track, blended together.',
+    steps: [
+      <>In your <b>Library</b>, click <b>Medley</b> (or open a playlist and click <b>Medley</b> to start with its songs).</>,
+      <>Tick songs in the order you want them, and use the arrows to rearrange.</>,
+      <>Set the <b>crossfade</b> (how long two songs overlap), and keep <b>Same loudness</b> on so no song is suddenly louder.</>,
+      <>Press <b>Forge medley</b>. It's saved as a new song in your library and Spotify folder.</>
+    ],
+    tip: <>Trim the songs first so each one starts and ends where you want. The medley uses them exactly as they are.</>
+  },
+  {
+    id: 'packs',
+    icon: <Package size={18} />,
+    title: 'Share songs with friends',
+    summary: 'Send a song pack. They get everything with one click.',
+    steps: [
+      <>Click <b>Share</b> in your Library, <b>Share pack</b> on a playlist, or <b>Share with a friend</b> in a song's <b>…</b> menu.</>,
+      <>Pick the songs, give the pack a name, and press <b>Save pack</b>. You get one <span className="font-mono">.songforge</span> file.</>,
+      <>Send it however you like: Discord, Google Drive, a USB stick.</>,
+      <>Your friend double-clicks it (or uses <b>Library → Import</b>). The songs arrive with covers, lyrics and versions, plus a playlist named after the pack.</>
+    ],
+    tip: <>Packs hold the finished MP3s, so your friend doesn't need to download or clip anything. Songs they already have are skipped.</>
+  },
+  {
+    id: 'dupes',
+    icon: <CopyX size={18} />,
+    title: 'Remove duplicate songs',
+    summary: 'The same song imported or forged twice.',
+    steps: [
+      <>In your <b>Library</b>, click <b>Duplicates</b>. The number shows how many songs are there more than once.</>,
+      <>For each song, choose the copy to <b>keep</b>. SongForge suggests the one in the most playlists, with lyrics and a cover.</>,
+      <>Click <b>Keep one</b>, or <b>Clean up all</b>. Playlists switch to the copy you kept, so nothing goes missing.</>
+    ],
+    tip: <>Different versions (live, sped up, instrumental, a different clip of the same video) never count as duplicates.</>
+  },
+  {
     id: 'import',
     icon: <Upload size={18} />,
     title: 'Import songs you already have',
@@ -145,12 +214,27 @@ const GUIDES: Guide[] = [
     id: 'phone',
     icon: <Smartphone size={18} />,
     title: 'Get your songs on your phone',
-    summary: 'Uses Spotify Premium and your Wi-Fi.',
+    summary: 'Spotify Premium plus your home Wi-Fi. Works on iPhone and Android.',
     steps: [
-      <>On your PC, add your forged songs to a Spotify playlist.</>,
-      <>On your phone, turn on <b>Local audio files</b> in Spotify's settings.</>,
-      <>With your phone on the same Wi-Fi as your PC, open the playlist and tap download.</>
-    ]
+      <>Do the PC setup first (the guide above), so your songs show in Spotify Desktop under <b>Local Files</b>.</>,
+      <>On the PC, make a Spotify playlist (for example <b>SongForge</b>) and add your songs to it from <b>Local Files</b>.</>,
+      <>Put your phone on the <b>same Wi-Fi</b> as the PC, signed in to the same Spotify account, with Spotify Desktop open.</>,
+      <>On the phone, open Spotify <b>Settings</b> and turn on <b>Local audio files</b>. On iPhone, tap <b>Allow</b> when it asks to find devices on your local network.</>,
+      <>Open the playlist on your phone and turn on <b>Download</b>. Once it's downloaded, the songs play anywhere, even offline.</>
+    ],
+    tip: <>Songs greyed out on the phone? They haven't downloaded yet. Keep the phone on the same Wi-Fi with Spotify Desktop open, and see the full checklist on the <b>Spotify</b> page.</>
+  },
+  {
+    id: 'updates',
+    icon: <ArrowUpCircle size={18} />,
+    title: 'Updating SongForge',
+    summary: 'New versions arrive inside the app.',
+    steps: [
+      <>When a new version is out, a card appears at the bottom right. Click <b>Download update</b>.</>,
+      <>When it's ready, click <b>Restart now</b> (or just close SongForge and it installs on the way out).</>,
+      <>Your songs, playlists and settings stay exactly as they were.</>
+    ],
+    tip: <>Check by hand anytime in <b>Settings → Updates → Check now</b>.</>
   },
   {
     id: 'trouble',

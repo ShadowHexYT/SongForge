@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { LayoutGrid, List, Play, Search, Shuffle, Music2, Upload, Layers } from 'lucide-react'
+import { LayoutGrid, List, Play, Search, Shuffle, Music2, Upload, Layers, Package, Combine, CopyX } from 'lucide-react'
+import { findDuplicates } from '@shared/duplicates'
 import { versionKey } from '@shared/versions'
 import { SmithHammer } from '@/components/ForgeIcons'
 import { useApp } from '@/lib/store'
@@ -49,6 +50,8 @@ export function LibraryPage() {
   })
   const groups = useVersionGroups()
   const setImportOpen = useApp((s) => s.setImportOpen)
+  const openSheet = useApp((s) => s.openSheet)
+  const dupeCount = useMemo(() => findDuplicates(songs).length, [songs])
 
   const artists = useMemo(() => {
     const m = new Map<string, number>()
@@ -172,7 +175,30 @@ export function LibraryPage() {
             <Layers size={14} /> Stack versions
           </button>
         )}
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<Combine size={15} />}
+            title="Join songs into one track with crossfades"
+            onClick={() => openSheet({ kind: 'medley', songIds: [] })}
+          >
+            <span className="max-xl:hidden">Medley</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<Package size={15} />}
+            title="Send songs to a friend as one file"
+            onClick={() => openSheet({ kind: 'pack', songIds: filtered.length < songs.length ? filtered.map((s) => s.id) : [], name: artist ?? 'My songs' })}
+          >
+            <span className="max-xl:hidden">Share</span>
+          </Button>
+          <Button variant="ghost" size="sm" icon={<CopyX size={15} />} title="Find songs that are in your library twice" onClick={() => openSheet({ kind: 'dupes' })}>
+            <span className="max-xl:hidden">Duplicates</span>
+            {dupeCount > 0 && <span className="rounded-full bg-ember-500/20 px-1.5 text-[11px] font-bold text-ember-400">{dupeCount}</span>}
+          </Button>
+          <span className="mx-1 h-5 w-px bg-ink-700" />
           <Segmented
             value={view}
             onChange={setView}

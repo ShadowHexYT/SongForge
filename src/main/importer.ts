@@ -9,6 +9,7 @@ import { ensureDir, getLibrary, getSettings, mutateLibrary, paths } from './stor
 import { ffmpegPath, run } from './tools'
 import { AUDIO_EXT, extractImage, probeDuration } from './youtube'
 import { coverArgs, lrcPathFor, metadataArgs, sanitizeFilename, uniquePath } from './audio'
+import { importPack } from './packs'
 
 type Progress = (stage: string, percent: number, detail?: string) => void
 
@@ -88,10 +89,12 @@ const inside = (file: string, dir: string) => resolve(file).toLowerCase().starts
 export async function importSongs(inputs: string[], onProgress: Progress): Promise<ImportResult> {
   const settings = getSettings()
   const outDir = ensureDir(settings.outputDir)
-  const files = collect(inputs)
+  const result: ImportResult = { added: 0, skipped: 0, errors: [] }
+  // Song packs from friends
+  for (const pack of inputs.filter((p) => p.toLowerCase().endsWith('.songforge'))) await importPack(pack, onProgress, result)
+  const files = collect(inputs.filter((p) => !p.toLowerCase().endsWith('.songforge')))
   const key = (p: string) => resolve(p).toLowerCase()
   const known = new Set(getLibrary().songs.flatMap((s) => [key(s.filePath), ...(s.importedFrom ? [key(s.importedFrom)] : [])]))
-  const result: ImportResult = { added: 0, skipped: 0, errors: [] }
   const added: Song[] = []
 
   for (const [i, file] of files.entries()) {

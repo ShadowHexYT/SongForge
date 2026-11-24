@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { CheckCircle2, Download, FolderOpen, Loader2, RefreshCw, Trash2, XCircle, Upload, RotateCcw, ShieldCheck, X } from 'lucide-react'
+import { CheckCircle2, Download, FolderOpen, Loader2, RefreshCw, Trash2, XCircle, Upload, RotateCcw, ShieldCheck, X, ArrowUpCircle, RotateCw } from 'lucide-react'
 import { MAX_CUSTOM_PRESETS, type Settings, type ToolStatus } from '@shared/types'
 import { api, newJobId } from '@/lib/api'
 import { useApp } from '@/lib/store'
@@ -10,6 +10,7 @@ export function SettingsPage() {
   const settings = useApp((s) => s.settings)
   const setSettings = useApp((s) => s.setSettings)
   const toast = useApp((s) => s.toast)
+  const update = useApp((s) => s.update)
   const [tools, setTools] = useState<ToolStatus | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [log, setLog] = useState<string[]>([])
@@ -100,6 +101,51 @@ export function SettingsPage() {
         </Row>
       </Group>
 
+      <Group title="Updates">
+        <Row
+          label={`SongForge ${update?.current ?? ''}`}
+          desc={
+            update?.status === 'dev'
+              ? 'Updates work in the installed app, not while developing.'
+              : update?.status === 'checking'
+                ? 'Checking GitHub…'
+                : update?.status === 'none'
+                  ? "You're up to date."
+                  : update?.status === 'available'
+                    ? `Version ${update.version} is available.`
+                    : update?.status === 'downloading'
+                      ? `Downloading ${update.version}… ${Math.round(update.percent ?? 0)}%`
+                      : update?.status === 'ready'
+                        ? `Version ${update.version} is downloaded. Restart to install it.`
+                        : update?.status === 'error'
+                          ? `Couldn't check: ${update.error}`
+                          : 'New versions come from the SongForge page on GitHub.'
+          }
+        >
+          {update?.status === 'available' ? (
+            <Button size="sm" variant="primary" icon={<Download size={14} />} onClick={() => api.updates.download()}>
+              Download
+            </Button>
+          ) : update?.status === 'ready' ? (
+            <Button size="sm" variant="primary" icon={<RotateCw size={14} />} onClick={() => api.updates.install()}>
+              Restart now
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              disabled={update?.status === 'dev' || update?.status === 'checking' || update?.status === 'downloading'}
+              icon={update?.status === 'checking' ? <Loader2 size={14} className="animate-spin" /> : <ArrowUpCircle size={14} />}
+              onClick={() => api.updates.check()}
+            >
+              Check now
+            </Button>
+          )}
+        </Row>
+        <Row label="Check for updates when SongForge starts" desc="Only asks GitHub which version is newest. Nothing downloads until you say so.">
+          <Toggle label="Check for updates automatically" checked={settings.autoUpdate} onChange={(v) => save({ autoUpdate: v })} />
+        </Row>
+      </Group>
+
       <Group title="Library">
         <Row label="Import songs" desc="Add MP3s and other audio files you already have. They're copied into your SongForge folder.">
           <Button size="sm" icon={<Upload size={14} />} onClick={() => useApp.getState().setImportOpen(true)}>
@@ -119,7 +165,8 @@ export function SettingsPage() {
           <ShieldCheck size={16} className="shrink-0 text-emerald-400" />
           <span>
             The clipboard is only read when you switch back to SongForge, only checked for a link, and never saved, logged or sent anywhere. SongForge has no accounts, tracking or analytics. The only
-            outside services it talks to are the sites you download from and LRCLIB when you click "Find lyrics" (which sends just the song title, artist and length).
+            outside services it talks to are the sites you download from, LRCLIB when you click "Find lyrics" and the iTunes catalog when you click "Look up" (both get just the song title and artist),
+            and GitHub to check for updates.
           </span>
         </div>
       </Group>
@@ -209,7 +256,7 @@ export function SettingsPage() {
       </Group>
 
       <p className="mt-10 text-xs leading-relaxed text-ink-500">
-        SongForge 1.0 · For personal use. Downloading from YouTube may go against YouTube's Terms of Service. Only forge content you have the right to keep.
+        SongForge {update?.current ?? ''} · For personal use. Downloading from YouTube may go against YouTube's Terms of Service. Only forge content you have the right to keep.
       </p>
     </div>
   )

@@ -20,13 +20,13 @@ import {
   Headphones,
   Wand2
 } from 'lucide-react'
-import { SITES } from '@shared/sites'
+import { SITES, isPlaylistUrl } from '@shared/sites'
 import { Anvil } from '@/components/ForgeIcons'
 import type { SearchResult, Session } from '@shared/types'
 import { api, mediaUrl } from '@/lib/api'
 import { useApp } from '@/lib/store'
 import { usePlayer } from '@/lib/player'
-import { addFile, cleanError, extractUrls, useQueue } from '@/lib/queue'
+import { addFile, cleanError, extractUrls, queueLinks, useQueue } from '@/lib/queue'
 import { fmtTime, timeAgo } from '@/lib/format'
 import { Button, Cover, IconButton, ProgressBar, cx } from '@/components/ui'
 
@@ -62,12 +62,9 @@ export function ForgePage() {
   const submit = async (value = text) => {
     const found = extractUrls(value)
     if (found.length) {
-      queue.add(
-        found.map((url) => ({ url })),
-        found.length === 1
-      )
+      const { videos } = queueLinks(found)
       setText('')
-      if (found.length > 1) toast({ kind: 'info', title: `Queued ${found.length} videos`, body: 'They download in the background. Open each one when it’s ready.' })
+      if (videos > 1) toast({ kind: 'info', title: `Queued ${videos} videos`, body: 'They download in the background. Open each one when it’s ready.' })
       return
     }
     const q = value.trim()
@@ -103,7 +100,8 @@ export function ForgePage() {
     e.preventDefault()
     setDropping(false)
     const files = [...e.dataTransfer.files].map((f) => api.filePathFor(f)).filter(Boolean)
-    if (files.length === 1) addFile(files[0])
+    if (files.some((f) => f.toLowerCase().endsWith('.songforge'))) setImportOpen(true, files)
+    else if (files.length === 1) addFile(files[0])
     else if (files.length > 1) {
       // Several files: they're probably songs to add to the library as they are
       api.song.import('drop', files).then(async (r) => {
@@ -139,7 +137,7 @@ export function ForgePage() {
           <div className="rounded-3xl border-2 border-dashed border-ember-500 bg-ink-900/90 px-12 py-10 text-center">
             <Upload size={32} className="mx-auto text-ember-400" />
             <div className="mt-3 text-lg font-semibold">Drop to open</div>
-            <div className="mt-1 text-sm text-ink-400">One file opens in the editor. Several files are imported to your library.</div>
+            <div className="mt-1 text-sm text-ink-400">One file opens in the editor. Several files or a song pack are added to your library.</div>
           </div>
         </div>
       )}
@@ -208,11 +206,11 @@ export function ForgePage() {
             disabled={mode === 'empty' || searching}
             icon={searching ? <Loader2 size={18} className="animate-spin" /> : mode === 'links' ? <ArrowRight size={18} /> : <Search size={17} />}
           >
-            {mode === 'links' ? (urls.length > 1 ? 'Queue all' : 'Forge') : 'Search'}
+            {mode === 'links' ? (urls.length > 1 ? 'Queue all' : urls.some(isPlaylistUrl) ? 'Choose videos' : 'Forge') : 'Search'}
           </Button>
         </div>
         <p className="mt-2.5 pl-2 text-xs leading-relaxed text-ink-400">
-          Paste several links at once to queue them, or drop a file here. Links with <span className="font-mono">&amp;t=</span> start the clip at that time.
+          Paste several links, a whole playlist or a channel, or drop a file here. Links with <span className="font-mono">&amp;t=</span> start the clip at that time.
         </p>
       </form>
 

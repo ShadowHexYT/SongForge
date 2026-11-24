@@ -26,7 +26,7 @@ async function query(params: Record<string, string>): Promise<LrclibRow[]> {
 }
 
 /** Strip version noise from titles ("Song (Live) [4K]" -> "Song") for a better match. */
-const cleanTitle = (t: string) =>
+export const cleanTitle = (t: string) =>
   t
     .replace(/[([【][^)\]】]*[)\]】]/g, ' ')
     .replace(/\b(sped up|slowed|nightcore|reverb|instrumental|live|cover|fancam)\b/gi, ' ')

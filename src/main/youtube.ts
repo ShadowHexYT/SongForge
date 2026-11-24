@@ -3,7 +3,7 @@ import { copyFileSync, existsSync, readdirSync, readFileSync, rmSync, statSync, 
 import { basename, extname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createHash } from 'node:crypto'
-import type { Chapter, PreparedSource, SearchResult, SourceInfo } from '@shared/types'
+import type { Chapter, PlaylistEntry, PlaylistInfo, PreparedSource, SearchResult, SourceInfo } from '@shared/types'
 import { ensureDir, paths } from './store'
 import { ensureYtdlp, ffmpegPath, run, ytdlpBaseArgs, ytdlpEnv, ytdlpPath } from './tools'
 
@@ -283,6 +283,78 @@ export function listCachedSources(): Array<Pick<PreparedSource, 'id' | 'title' |
     }
   }
   return out
+}
+
+const MAX_PLAYLIST = 500
+
+/** List the videos in a playlist, channel or SoundCloud set without downloading them. */
+export async function expandPlaylist(url: string): Promise<PlaylistInfo> {
+  await ensureYtdlp()
+  let target = url
+  // A bare YouTube channel link lists its tabs; ask for the uploads instead
+  try {
+    const u = new URL(url)
+    if (/youtube\.com$/.test(u.hostname) && /^\/(@[^/]+|channel\/[^/]+|c\/[^/]+|user\/[^/]+)\/?$/.test(u.pathname)) {
+      u.pathname = u.pathname.replace(/\/?$/, '/videos')
+      target = u.toString()
+    }
+  } catch {
+    /* yt-dlp will report a bad link */
+  }
+  const r = await run(
+    ytdlpPath(),
+    ['--js-runtimes', `node:${process.execPath}`, '--flat-playlist', '-J', '--no-warnings', '--playlist-end', String(MAX_PLAYLIST + 1), target],
+    { env: ytdlpEnv }
+  )
+  if (r.code !== 0) throw new Error(friendlyYtError(r.stderr))
+  const j = JSON.parse(r.stdout)
+  type Entry = {
+    _type?: string
+    id?: string
+    url?: string
+    webpage_url?: string
+    title?: string
+    channel?: string
+    uploader?: string
+    duration?: number
+    ie_key?: string
+    thumbnails?: Array<{ url: string; width?: number }>
+    entries?: Entry[]
+  }
+  const flat: Entry[] = []
+  const walk = (list: Entry[] | undefined) => {
+    for (const e of list ?? []) {
+      if (!e) continue
+      if (e.entries) walk(e.entries)
+      else flat.push(e)
+    }
+  }
+  walk(j.entries)
+  const entries: PlaylistEntry[] = []
+  const seen = new Set<string>()
+  for (const e of flat) {
+    const title = e.title ?? ''
+    if (/^\[(Private|Deleted) video\]$/i.test(title)) continue
+    const isYt = (e.ie_key ?? '').toLowerCase() === 'youtube' || /youtu/.test(e.url ?? '')
+    const link = isYt && e.id && /^[A-Za-z0-9_-]{11}$/.test(e.id) ? `https://www.youtube.com/watch?v=${e.id}` : (e.webpage_url ?? e.url ?? '')
+    if (!/^https?:\/\//.test(link) || seen.has(link)) continue
+    seen.add(link)
+    const thumbs = (e.thumbnails ?? []).filter((t) => t.url)
+    entries.push({
+      url: link,
+      title: title || link,
+      channel: e.channel ?? e.uploader ?? j.channel ?? j.uploader ?? '',
+      duration: e.duration ?? 0,
+      thumbnail: isYt && e.id ? `https://i.ytimg.com/vi/${e.id}/mqdefault.jpg` : ((thumbs.find((t) => (t.width ?? 0) >= 200) ?? thumbs.at(-1))?.url ?? '')
+    })
+  }
+  if (!entries.length) throw new Error("This link doesn't contain any videos SongForge can open.")
+  return {
+    title: j.title ?? 'Playlist',
+    channel: j.channel ?? j.uploader ?? '',
+    entries: entries.slice(0, MAX_PLAYLIST),
+    truncated: entries.length > MAX_PLAYLIST
+  }
 }
 
 export async function searchYouTube(query: string, limit = 18): Promise<SearchResult[]> {

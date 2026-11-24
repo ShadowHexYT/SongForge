@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { Segmented } from '@/components/ui'
 import { CheckCircle2, Circle, Copy, FolderOpen, Monitor, RefreshCw, Smartphone, ExternalLink, Info } from 'lucide-react'
 import type { SpotifyStatus } from '@shared/types'
 import { api } from '@/lib/api'
@@ -10,6 +11,7 @@ export function SpotifyPage() {
   const settings = useApp((s) => s.settings)
   const [status, setStatus] = useState<SpotifyStatus | null>(null)
   const [checking, setChecking] = useState(false)
+  const [phone, setPhone] = useState<'iphone' | 'android'>('iphone')
 
   const check = async () => {
     setChecking(true)
@@ -79,19 +81,74 @@ export function SpotifyPage() {
         </Step>
       </Section>
 
-      <Section icon={<Smartphone size={18} />} title="2 · On your phone (Premium)">
-        <Step n={1}>
-          On the PC, create a Spotify playlist (for example <b>SongForge</b>), then select songs in <b>Local Files</b> and use <b>Add to playlist</b>.
-        </Step>
-        <Step n={2}>Connect your phone to the <b>same Wi-Fi</b> as the PC, and log in to the same Spotify account on both.</Step>
-        <Step n={3}>
-          On the phone, open Spotify <b>Settings</b> and turn on <b>Local audio files</b> (Android) or <b>Local Files</b> (iOS). Allow local network access if asked.
-        </Step>
-        <Step n={4}>
-          Open the playlist on your phone and tap <b>Download</b>. The songs sync over Wi-Fi and then play offline anywhere.
-        </Step>
-        <Step n={5}>When you forge new songs later, add them to that playlist on the PC. Your phone picks them up the next time it's on the same Wi-Fi.</Step>
-      </Section>
+      <section className="mt-10">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="flex items-center gap-2.5 text-lg font-semibold">
+            <span className="flex size-8 items-center justify-center rounded-lg bg-ink-800 text-ink-200">
+              <Smartphone size={18} />
+            </span>
+            2 · On your phone (Premium)
+          </h2>
+          <Segmented
+            value={phone}
+            onChange={setPhone}
+            options={[
+              { value: 'iphone', label: 'iPhone' },
+              { value: 'android', label: 'Android' }
+            ]}
+          />
+        </div>
+        <ol className="mt-4 flex flex-col gap-2">
+          <Step n={1}>
+            On the PC, create a Spotify playlist (for example <b>SongForge</b>). In <b>Local Files</b>, select songs (<b>Ctrl+A</b> selects all), right-click and choose <b>Add to playlist</b>.
+          </Step>
+          <Step n={2}>
+            Connect your phone to the <b>same Wi-Fi</b> as this PC. Sign in to the <b>same Spotify account</b> on both, and leave Spotify Desktop open.
+          </Step>
+          {phone === 'iphone' ? (
+            <>
+              <Step n={3}>
+                On the iPhone, open Spotify, tap your <b>profile picture → Settings and privacy → Apps and devices</b> and turn on <b>Local audio files</b>.
+              </Step>
+              <Step n={4}>
+                If Spotify asks to <b>find and connect to devices on your local network</b>, tap <b>Allow</b>. Missed it? Turn it on in iPhone <b>Settings → Privacy &amp; Security → Local Network → Spotify</b>.
+              </Step>
+            </>
+          ) : (
+            <>
+              <Step n={3}>
+                On the Android phone, open Spotify, tap your <b>profile picture → Settings and privacy → Apps and devices</b> and turn on <b>Local audio files</b>.
+              </Step>
+              <Step n={4}>
+                If Android asks Spotify for permission to find <b>nearby devices</b> or access <b>music and audio</b>, allow it.
+              </Step>
+            </>
+          )}
+          <Step n={5}>
+            Open the playlist on your phone and turn on <b>Download</b> (the arrow button). When the songs finish downloading they play anywhere, even offline.
+          </Step>
+          <Step n={6}>New songs later? Add them to the same playlist on the PC, then open Spotify on your phone at home. They download on their own.</Step>
+        </ol>
+      </section>
+
+      <section className="mt-6 rounded-xl border border-ink-700 bg-ink-850 p-5">
+        <h3 className="text-sm font-semibold">Songs greyed out or not downloading on the phone?</h3>
+        <ul className="mt-3 flex list-disc flex-col gap-1.5 pl-5 text-sm leading-relaxed text-ink-300 marker:text-ink-500">
+          <li>Both devices must be on the same Wi-Fi network (not a guest network, and the phone not on mobile data or a VPN).</li>
+          <li>Spotify Desktop has to be open on this PC while the phone downloads.</li>
+          <li>Check that <b className="text-ink-100">Local audio files</b> is on in the phone's Spotify settings, and that it's the same Spotify account as the PC.</li>
+          {phone === 'iphone' ? (
+            <li>
+              Check iPhone <b className="text-ink-100">Settings → Privacy &amp; Security → Local Network</b>, and make sure Spotify is switched on.
+            </li>
+          ) : (
+            <li>
+              Android alternative without Wi-Fi sync: copy MP3s from the SongForge folder onto the phone with a USB cable, then turn on <b className="text-ink-100">Show audio files from this device</b> in Spotify's settings.
+            </li>
+          )}
+          <li>Still stuck? Close and reopen Spotify on both devices. Downloads often start right after.</li>
+        </ul>
+      </section>
 
       <div className="mt-8 flex gap-3 rounded-xl border border-sky-500/20 bg-sky-500/5 p-4 text-sm text-ink-300">
         <Info size={18} className="mt-0.5 shrink-0 text-sky-400" />
